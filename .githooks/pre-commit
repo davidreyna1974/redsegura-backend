@@ -1,0 +1,26 @@
+#!/bin/sh
+# ---------------------------------------------------------------------------
+# git-hook: impide commits directos a ramas protegidas (main, develop).
+#
+# Flujo correcto:
+#   1. Trabaja en una rama  feature/…  |  fix/…  |  chore/…
+#   2. Integra con merge no-fast-forward:
+#        git checkout develop && git merge --no-ff <tu-rama>
+#
+# Capa LOCAL de la "doble protección de ramas". La capa de servidor
+# (branch protection en GitHub) se configura al crear el repositorio remoto.
+# ---------------------------------------------------------------------------
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+protected="main develop"
+
+for p in $protected; do
+  if [ "$branch" = "$p" ]; then
+    echo "✖ Commit directo a la rama protegida '$branch' BLOQUEADO."
+    echo "  Usa una rama feature/… , fix/… o chore/… y luego integra con:"
+    echo "    git checkout develop && git merge --no-ff <tu-rama>"
+    exit 1
+  fi
+done
+
+exit 0

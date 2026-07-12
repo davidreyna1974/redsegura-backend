@@ -1,0 +1,41 @@
+# === Sistema operativo ===
+.DS_Store
+Thumbs.db
+
+# === Editores / IDE ===
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+
+# === Secretos y entorno ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# === Java / Maven ===
+target/
+*.class
+dependency-reduced-pom.xml
+.mvn/wrapper/maven-wrapper.jar
+build/
+.gradle/
+
+# === Python / FastAPI ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# === Logs ===
+*.log
