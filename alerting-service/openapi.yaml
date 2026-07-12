@@ -1,0 +1,256 @@
+openapi: 3.1.0
+info:
+  title: alerting-service API
+  description: |
+    Evaluación de reglas de alerta y generación de alertas (RF-29..31). Consume del message
+    broker los eventos config.drift_detected, config.unsaved_changes_detected,
+    config.backup_failed, compliance.finding_created y vulnerability.critical_found (Fase B);
+    evalúa reglas configurables y publica alert.created.
+    Roles: ADM=Administrador, OPE=Operador, AUD=Auditor (extensión `x-roles`).
+  version: 0.1.0
+servers:
+  - url: /api/v1
+    description: Ruta base (tras el API Gateway)
+
+tags:
+  - name: alert-rules
+  - name: alerts
+  - name: health
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Estado de salud del servicio
+      operationId: getHealth
+      security: []
+      responses:
+        "200": { description: Disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+
+  /alert-rules:
+    post:
+      tags: [alert-rules]
+      summary: Crear una regla de alerta
+      operationId: createAlertRule
+      x-roles: [ADM]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AlertRuleRequest" }
+      responses:
+        "201": { description: Regla creada, content: { application/json: { schema: { $ref: "#/components/schemas/AlertRule" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+    get:
+      tags: [alert-rules]
+      summary: Listar reglas de alerta
+      operationId: listAlertRules
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: estado, in: query, schema: { $ref: "#/components/schemas/RuleState" } }
+        - { name: severity, in: query, schema: { $ref: "#/components/schemas/Severity" } }
+        - { name: eventType, in: query, schema: { $ref: "#/components/schemas/EventType" } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+      responses:
+        "200": { description: Página de reglas, content: { application/json: { schema: { $ref: "#/components/schemas/PageAlertRule" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /alert-rules/{ruleId}:
+    parameters: [ { name: ruleId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [alert-rules]
+      summary: Consultar una regla
+      operationId: getAlertRule
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200": { description: Regla, content: { application/json: { schema: { $ref: "#/components/schemas/AlertRule" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [alert-rules]
+      summary: Actualizar una regla
+      operationId: updateAlertRule
+      x-roles: [ADM]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AlertRuleRequest" }
+      responses:
+        "200": { description: Regla actualizada, content: { application/json: { schema: { $ref: "#/components/schemas/AlertRule" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+    delete:
+      tags: [alert-rules]
+      summary: Eliminar una regla
+      operationId: deleteAlertRule
+      x-roles: [ADM]
+      responses:
+        "204": { description: Regla eliminada }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /alerts:
+    get:
+      tags: [alerts]
+      summary: Historial de alertas
+      operationId: listAlerts
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: severity, in: query, schema: { $ref: "#/components/schemas/Severity" } }
+        - { name: estado, in: query, schema: { $ref: "#/components/schemas/AlertState" } }
+        - { name: deviceId, in: query, schema: { type: string, format: uuid } }
+        - { name: hostname, in: query, schema: { type: string } }
+        - { name: mgmtIp, in: query, schema: { type: string } }
+        - { name: eventType, in: query, schema: { $ref: "#/components/schemas/EventType" } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+        - { $ref: "#/components/parameters/Sort" }
+      responses:
+        "200": { description: Página de alertas, content: { application/json: { schema: { $ref: "#/components/schemas/PageAlert" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /alerts/{alertId}:
+    parameters: [ { name: alertId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [alerts]
+      summary: Detalle de una alerta
+      operationId: getAlert
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200": { description: Alerta, content: { application/json: { schema: { $ref: "#/components/schemas/Alert" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /alerts/{alertId}/acknowledge:
+    parameters: [ { name: alertId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    post:
+      tags: [alerts]
+      summary: Reconocer una alerta
+      description: |
+        RBAC según matriz §5 (ADM, OPE, AUD). NOTA (L01): pendiente decidir si el rol Auditor,
+        definido como solo lectura, debe excluirse de "reconocer"; hasta resolverlo se sigue la matriz.
+      operationId: acknowledgeAlert
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200": { description: Alerta reconocida, content: { application/json: { schema: { $ref: "#/components/schemas/Alert" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: JWT emitido por Keycloak }
+
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
+    Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. createdAt,desc" }
+
+  responses:
+    BadRequest: { description: Petición malformada, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Unauthorized: { description: No autenticado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Forbidden: { description: Sin permiso, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    NotFound: { description: No encontrado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Conflict: { description: Conflicto de estado (p. ej. alerta ya cerrada), content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+
+  schemas:
+    Health: { type: object, properties: { status: { type: string, example: UP } } }
+    Severity: { type: string, enum: [CRITICA, ALTA, MEDIA, BAJA] }
+    RuleState: { type: string, enum: [activa, inactiva] }
+    AlertState: { type: string, enum: [activa, reconocida, cerrada] }
+    EventType:
+      type: string
+      enum:
+        - config.drift_detected
+        - config.unsaved_changes_detected
+        - config.backup_failed
+        - compliance.finding_created
+        - vulnerability.critical_found
+
+    AlertRuleRequest:
+      type: object
+      required: [name, eventType, severity]
+      properties:
+        name: { type: string, example: "Drift crítico en núcleo" }
+        eventType: { $ref: "#/components/schemas/EventType" }
+        severity: { $ref: "#/components/schemas/Severity" }
+        condition: { type: string, description: "Expresión opcional sobre el payload, p. ej. criticality == ALTA" }
+        enabled: { type: boolean, default: true }
+
+    AlertRule:
+      type: object
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        name: { type: string }
+        eventType: { $ref: "#/components/schemas/EventType" }
+        severity: { $ref: "#/components/schemas/Severity" }
+        condition: { type: ["string", "null"] }
+        state: { $ref: "#/components/schemas/RuleState" }
+        createdAt: { type: string, format: date-time, readOnly: true }
+
+    Alert:
+      type: object
+      required: [alertId, severity, state]
+      properties:
+        alertId: { type: string, format: uuid, readOnly: true }
+        severity: { $ref: "#/components/schemas/Severity" }
+        deviceId: { type: ["string", "null"], format: uuid }
+        sourceEvent: { $ref: "#/components/schemas/EventType" }
+        ruleId: { type: string, format: uuid }
+        detail: { type: string }
+        state: { $ref: "#/components/schemas/AlertState" }
+        createdAt: { type: string, format: date-time }
+        acknowledgedAt: { type: ["string", "null"], format: date-time }
+        acknowledgedBy: { type: ["string", "null"] }
+
+    PageAlertRule:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/AlertRule" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    PageAlert:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/Alert" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: ALERT_NOT_FOUND }
+        message: { type: string }
+        traceId: { type: string }
+        timestamp: { type: string, format: date-time }
