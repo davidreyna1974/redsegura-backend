@@ -3,6 +3,7 @@ package com.redsegura.assetinventory.service;
 import com.redsegura.assetinventory.domain.Criticality;
 import com.redsegura.assetinventory.domain.DeviceStatus;
 import com.redsegura.assetinventory.domain.DeviceType;
+import com.redsegura.assetinventory.domain.IdempotencyRecord;
 import com.redsegura.assetinventory.domain.Location;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
@@ -14,6 +15,8 @@ import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
 import com.redsegura.assetinventory.mapper.DeviceMapper;
 import com.redsegura.assetinventory.repository.DeviceRepository;
+import com.redsegura.assetinventory.repository.IdempotencyRepository;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -32,16 +35,32 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeviceService {
 
   private final DeviceRepository repository;
+  private final IdempotencyRepository idempotencyRepository;
   private final DeviceMapper mapper;
 
-  public DeviceService(DeviceRepository repository, DeviceMapper mapper) {
+  public DeviceService(
+      DeviceRepository repository,
+      IdempotencyRepository idempotencyRepository,
+      DeviceMapper mapper) {
     this.repository = repository;
+    this.idempotencyRepository = idempotencyRepository;
     this.mapper = mapper;
   }
 
-  /** Alta de dispositivo. La unicidad (RN1) la garantiza el índice único, no un chequeo previo. */
+  /**
+   * Alta de dispositivo. La unicidad (RN1) la garantiza el índice único, no un chequeo previo. Con
+   * {@code Idempotency-Key} (RN9): si la clave ya se usó, se devuelve el dispositivo original sin
+   * crear un duplicado (la clave y el dispositivo se guardan en la misma transacción).
+   */
   @Transactional
-  public VersionedDevice create(DeviceCreateRequest req) {
+  public VersionedDevice create(DeviceCreateRequest req, String idempotencyKey) {
+    boolean hasKey = idempotencyKey != null && !idempotencyKey.isBlank();
+    if (hasKey) {
+      Optional<IdempotencyRecord> existing = idempotencyRepository.findById(idempotencyKey);
+      if (existing.isPresent()) {
+        return findById(existing.get().getDeviceId());
+      }
+    }
     var entity =
         new com.redsegura.assetinventory.domain.Device(
             req.getSerialNumber(),
@@ -53,7 +72,12 @@ public class DeviceService {
     entity.setVendor(req.getVendor());
     entity.setModel(req.getModel());
     entity.setLocation(toDomainLocation(req.getLocation()));
-    return save(entity);
+    VersionedDevice created = save(entity);
+    if (hasKey) {
+      idempotencyRepository.saveAndFlush(
+          new IdempotencyRecord(idempotencyKey, created.body().getId()));
+    }
+    return created;
   }
 
   @Transactional(readOnly = true)

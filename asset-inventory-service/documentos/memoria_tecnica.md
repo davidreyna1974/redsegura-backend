@@ -96,9 +96,14 @@ endpoint (escritura solo ADM; lectura ADM/OPE/AUD; probes públicos); roles extr
 coincide (o `ObjectOptimisticLockingFailureException` en carrera), 428 si falta. `mvn verify` → 32
 tests (incluye FLOW-02 412, FLOW-03 428, PATCH feliz con ETag), cobertura ≥70%, 0 Checkstyle.
 
-**Pendiente (Hito 4, resto):** idempotencia (RN9), redacción de `mgmtIp` (RN10), publicación de
-eventos vía outbox (RN11), bulk import, y Pact de eventos `asset.*`. Nota: 401/403 aún no salen en
-`problem+json` (requiere entry point/handler propios) — refinamiento.
+**Hito 4c — idempotencia (2026-07-13):** `POST` con `Idempotency-Key` (RN9). Tabla
+`idempotency_keys` (Flyway V2); si la clave ya existe se devuelve el dispositivo original (replay,
+sin duplicar); la clave y el dispositivo se guardan en la misma transacción. `mvn verify` → 34
+tests (incluye replay a nivel servicio y API), cobertura ≥70%, 0 Checkstyle.
+
+**Pendiente (Hito 4, resto):** redacción de `mgmtIp` (RN10), publicación de eventos vía outbox
+(RN11), bulk import, y Pact de eventos `asset.*`. Nota: 401/403 aún no salen en `problem+json`
+(requiere entry point/handler propios) — refinamiento.
 
 **Hito 3b — contract-first estricto (ADR-05):** se cableó **openapi-generator**. El contrato genera
 las interfaces de API (`DevicesApi`) y los DTOs; el `DeviceController` **implementa** la interfaz
