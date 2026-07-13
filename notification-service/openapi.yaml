@@ -21,15 +21,24 @@ security:
   - bearerAuth: []
 
 paths:
-  /health:
+  /health/liveness:
     get:
       tags: [health]
-      summary: Estado de salud del servicio
-      operationId: getHealth
+      summary: Liveness probe (¿el proceso vive?)
+      operationId: getLiveness
       security: []
       responses:
-        "200": { description: Disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "200": { description: Vivo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
         "503": { description: No disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+  /health/readiness:
+    get:
+      tags: [health]
+      summary: Readiness probe (¿listo? BD/broker/SMTP OK)
+      operationId: getReadiness
+      security: []
+      responses:
+        "200": { description: Listo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No listo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
 
   /notification-channels:
     get:
@@ -53,16 +62,23 @@ paths:
       summary: Configurar un canal (habilitación y severidades que lo activan)
       operationId: updateChannel
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/ChannelConfigRequest" }
       responses:
-        "200": { description: Canal actualizado, content: { application/json: { schema: { $ref: "#/components/schemas/ChannelConfig" } } } }
+        "200":
+          description: Canal actualizado
+          headers: { ETag: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/ChannelConfig" } } }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
 
   /notification-templates:
@@ -89,7 +105,10 @@ paths:
       operationId: getTemplate
       x-roles: [ADM]
       responses:
-        "200": { description: Plantilla, content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } } }
+        "200":
+          description: Plantilla
+          headers: { ETag: { schema: { type: string }, description: Usar en If-Match para editar } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -98,17 +117,24 @@ paths:
       summary: Actualizar una plantilla
       operationId: updateTemplate
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/TemplateRequest" }
       responses:
-        "200": { description: Plantilla actualizada, content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } } }
+        "200":
+          description: Plantilla actualizada
+          headers: { ETag: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
 
   /notifications:
@@ -143,13 +169,21 @@ components:
     Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
     Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
     Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. sentAt,desc" }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag del recurso (RFC 7232) — concurrencia optimista (ADR-09).
+      schema: { type: string }
 
   responses:
-    BadRequest: { description: Petición malformada, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    Unauthorized: { description: No autenticado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    Forbidden: { description: Sin permiso, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    NotFound: { description: No encontrado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    BadRequest: { description: Petición malformada, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    Unauthorized: { description: No autenticado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    Forbidden: { description: Sin permiso, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    NotFound: { description: No encontrado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    PreconditionFailed: { description: If-Match no coincide (edición concurrente), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    PreconditionRequired: { description: Falta la cabecera If-Match, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
 
   schemas:
     Health: { type: object, properties: { status: { type: string, example: UP } } }
@@ -229,11 +263,13 @@ components:
         first: { type: boolean }
         last: { type: boolean }
 
-    ApiError:
+    Problem:
       type: object
-      required: [code, message]
+      description: Error en formato RFC 7807/9457 (application/problem+json)
       properties:
-        code: { type: string, example: TEMPLATE_NOT_FOUND }
-        message: { type: string }
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
         traceId: { type: string }
-        timestamp: { type: string, format: date-time }

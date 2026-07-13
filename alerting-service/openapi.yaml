@@ -21,15 +21,24 @@ security:
   - bearerAuth: []
 
 paths:
-  /health:
+  /health/liveness:
     get:
       tags: [health]
-      summary: Estado de salud del servicio
-      operationId: getHealth
+      summary: Liveness probe (¿el proceso vive?)
+      operationId: getLiveness
       security: []
       responses:
-        "200": { description: Disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "200": { description: Vivo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
         "503": { description: No disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+  /health/readiness:
+    get:
+      tags: [health]
+      summary: Readiness probe (¿listo? BD/broker OK)
+      operationId: getReadiness
+      security: []
+      responses:
+        "200": { description: Listo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No listo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
 
   /alert-rules:
     post:
@@ -37,6 +46,8 @@ paths:
       summary: Crear una regla de alerta
       operationId: createAlertRule
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
       requestBody:
         required: true
         content:
@@ -72,7 +83,10 @@ paths:
       operationId: getAlertRule
       x-roles: [ADM, OPE, AUD]
       responses:
-        "200": { description: Regla, content: { application/json: { schema: { $ref: "#/components/schemas/AlertRule" } } } }
+        "200":
+          description: Regla
+          headers: { ETag: { schema: { type: string }, description: Usar en If-Match para editar/borrar } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/AlertRule" } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -81,28 +95,39 @@ paths:
       summary: Actualizar una regla
       operationId: updateAlertRule
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
         content:
           application/json:
             schema: { $ref: "#/components/schemas/AlertRuleRequest" }
       responses:
-        "200": { description: Regla actualizada, content: { application/json: { schema: { $ref: "#/components/schemas/AlertRule" } } } }
+        "200":
+          description: Regla actualizada
+          headers: { ETag: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/AlertRule" } } }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
     delete:
       tags: [alert-rules]
       summary: Eliminar una regla
       operationId: deleteAlertRule
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IfMatch" }
       responses:
         "204": { description: Regla eliminada }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
 
   /alerts:
     get:
@@ -165,14 +190,28 @@ components:
     Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
     Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
     Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. createdAt,desc" }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Clave de idempotencia para deduplicar reintentos (ADR-09).
+      schema: { type: string }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: ETag del recurso (RFC 7232) — concurrencia optimista (ADR-09).
+      schema: { type: string }
 
   responses:
-    BadRequest: { description: Petición malformada, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    Unauthorized: { description: No autenticado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    Forbidden: { description: Sin permiso, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    NotFound: { description: No encontrado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    Conflict: { description: Conflicto de estado (p. ej. alerta ya cerrada), content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    BadRequest: { description: Petición malformada, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    Unauthorized: { description: No autenticado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    Forbidden: { description: Sin permiso, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    NotFound: { description: No encontrado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    Conflict: { description: Conflicto de estado (p. ej. alerta ya cerrada), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    PreconditionFailed: { description: If-Match no coincide (edición concurrente), content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    PreconditionRequired: { description: Falta la cabecera If-Match, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
 
   schemas:
     Health: { type: object, properties: { status: { type: string, example: UP } } }
@@ -249,11 +288,13 @@ components:
         first: { type: boolean }
         last: { type: boolean }
 
-    ApiError:
+    Problem:
       type: object
-      required: [code, message]
+      description: Error en formato RFC 7807/9457 (application/problem+json)
       properties:
-        code: { type: string, example: ALERT_NOT_FOUND }
-        message: { type: string }
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
         traceId: { type: string }
-        timestamp: { type: string, format: date-time }
