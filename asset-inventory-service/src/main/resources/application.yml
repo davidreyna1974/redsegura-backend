@@ -1,0 +1,18 @@
+spring:
+  application:
+    name: asset-inventory-service
+
+server:
+  port: 8081
+
+# Observabilidad (RNF-15..17). Los probes del contrato viven en /api/v1/health/*;
+# Actuator queda disponible para métricas/health internos.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true

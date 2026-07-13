@@ -65,7 +65,7 @@
       notification-service (Fase A); vulnerability-service, remediation-tracking-service (Fase B).
     -->
     <modules>
-        <!-- <module>asset-inventory-service</module> -->
+        <module>asset-inventory-service</module>
     </modules>
 
     <build>
@@ -115,6 +115,8 @@
                     </dependencies>
                     <configuration>
                         <configLocation>google_checks.xml</configLocation>
+                        <!-- Relaja la exigencia de Javadoc obligatorio (ver checkstyle-suppressions.xml). -->
+                        <propertyExpansion>org.checkstyle.google.suppressionfilter.config=${maven.multiModuleProjectDirectory}/checkstyle-suppressions.xml</propertyExpansion>
                         <consoleOutput>true</consoleOutput>
                         <failsOnError>true</failsOnError>
                         <violationSeverity>warning</violationSeverity>
