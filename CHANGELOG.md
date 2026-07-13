@@ -20,3 +20,10 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
   CI (workflows en `workflow_dispatch` hasta scaffolding) e índice de documentación.
 - Repositorio publicado en GitHub (`redsegura-backend`, público) con branch protection.
 - `asset-inventory-service`: propuesta de módulo (documentación pre-código).
+- **Gobernanza de contratos (ADR-12):** `.spectral.yaml` que codifica los estándares OpenAPI
+  (RFC 7807, health probes, security global, sin `ApiError`) + workflow de CI que lo verifica
+  sobre todos los `openapi.yaml` en cada push/PR. Aplica a Fase A y Fase B.
+- Estándares de industria en los contratos de Fase A: RFC 7807 Problem Details, health probes
+  liveness/readiness, `Idempotency-Key` y `ETag`/`If-Match` (ADR-08..11). `asset-inventory`
+  además: identidad estable (`serialNumber`), `deviceType`, ubicación DCIM, bulk import,
+  redacción de `mgmtIp` por rol.

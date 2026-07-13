@@ -1,0 +1,60 @@
+# Gobernanza de contratos OpenAPI de redSegura (ADR-12).
+# Codifica como reglas verificables los estandares de industria adoptados (ADR-08..11)
+# y nuestras convenciones. Se ejecuta en CI sobre TODO <servicio>/openapi.yaml; si un
+# contrato (Fase A o Fase B) no cumple, el gate falla.
+extends: ["spectral:oas"]
+
+rules:
+  # --- Health probes diferenciados (ADR-10) ---
+  redsegura-health-probes:
+    description: "Todo servicio debe exponer /health/liveness y /health/readiness (ADR-10)."
+    severity: error
+    given: "$.paths"
+    then:
+      - field: "/health/liveness"
+        function: truthy
+      - field: "/health/readiness"
+        function: truthy
+
+  # --- Modelo de error RFC 7807 (ADR-08) ---
+  redsegura-problem-schema:
+    description: "Debe existir el esquema Problem (RFC 7807, ADR-08)."
+    severity: error
+    given: "$.components.schemas"
+    then:
+      field: "Problem"
+      function: truthy
+
+  redsegura-no-legacy-apierror:
+    description: "Prohibido el modelo de error propietario ApiError; usar Problem (ADR-08)."
+    severity: error
+    given: "$.components.schemas"
+    then:
+      field: "ApiError"
+      function: undefined
+
+  redsegura-error-responses-problem-json:
+    description: "Las respuestas de error (componentes) deben usar application/problem+json (ADR-08)."
+    severity: error
+    given: "$.components.responses[*].content"
+    then:
+      field: "application/problem+json"
+      function: truthy
+
+  # --- Seguridad: autenticacion por defecto (RBAC) ---
+  redsegura-global-security:
+    description: "El contrato debe declarar 'security' global (Bearer JWT)."
+    severity: error
+    given: "$"
+    then:
+      field: "security"
+      function: truthy
+
+  # --- Higiene de API ---
+  redsegura-servers-defined:
+    description: "El contrato debe declarar 'servers'."
+    severity: warn
+    given: "$"
+    then:
+      field: "servers"
+      function: truthy
