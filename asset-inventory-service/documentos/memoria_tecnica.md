@@ -91,9 +91,14 @@ endpoint (escritura solo ADM; lectura ADM/OPE/AUD; probes públicos); roles extr
 `realm_access.roles`; `created_by`/`updated_by` desde el JWT (o `system`). `mvn verify` → 28 tests
 (incluye SEC-01 Auditor→403, SEC-02 sin token→401), cobertura ≥70%, 0 Checkstyle.
 
-**Pendiente (Hito 4, resto):** ETag/If-Match (RN8), idempotencia (RN9), redacción de `mgmtIp`
-(RN10), publicación de eventos vía outbox (RN11), bulk import, y Pact de eventos `asset.*`. Nota:
-401/403 aún no salen en formato problem+json (requiere entry point/handler propios) — refinamiento.
+**Hito 4b — ETag/If-Match (2026-07-13):** concurrencia optimista sobre HTTP (ADR-09). El `ETag`
+(del `@Version`) se devuelve en create/get/put/patch; las mutaciones exigen `If-Match` → 412 si no
+coincide (o `ObjectOptimisticLockingFailureException` en carrera), 428 si falta. `mvn verify` → 32
+tests (incluye FLOW-02 412, FLOW-03 428, PATCH feliz con ETag), cobertura ≥70%, 0 Checkstyle.
+
+**Pendiente (Hito 4, resto):** idempotencia (RN9), redacción de `mgmtIp` (RN10), publicación de
+eventos vía outbox (RN11), bulk import, y Pact de eventos `asset.*`. Nota: 401/403 aún no salen en
+`problem+json` (requiere entry point/handler propios) — refinamiento.
 
 **Hito 3b — contract-first estricto (ADR-05):** se cableó **openapi-generator**. El contrato genera
 las interfaces de API (`DevicesApi`) y los DTOs; el `DeviceController` **implementa** la interfaz
