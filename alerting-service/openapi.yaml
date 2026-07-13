@@ -76,12 +76,13 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /alert-rules/{ruleId}:
-    parameters: [ { name: ruleId, in: path, required: true, schema: { type: string, format: uuid } } ]
     get:
       tags: [alert-rules]
       summary: Consultar una regla
       operationId: getAlertRule
       x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { $ref: "#/components/parameters/RuleId" }
       responses:
         "200":
           description: Regla
@@ -96,6 +97,7 @@ paths:
       operationId: updateAlertRule
       x-roles: [ADM]
       parameters:
+        - { $ref: "#/components/parameters/RuleId" }
         - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
@@ -120,6 +122,7 @@ paths:
       operationId: deleteAlertRule
       x-roles: [ADM]
       parameters:
+        - { $ref: "#/components/parameters/RuleId" }
         - { $ref: "#/components/parameters/IfMatch" }
       responses:
         "204": { description: Regla eliminada }
@@ -190,6 +193,7 @@ components:
     Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
     Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
     Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. createdAt,desc" }
+    RuleId: { name: ruleId, in: path, required: true, schema: { type: string, format: uuid } }
     IdempotencyKey:
       name: Idempotency-Key
       in: header

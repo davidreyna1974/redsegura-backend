@@ -56,13 +56,13 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /notification-channels/{channelType}:
-    parameters: [ { name: channelType, in: path, required: true, schema: { $ref: "#/components/schemas/ChannelType" } } ]
     put:
       tags: [channels]
       summary: Configurar un canal (habilitación y severidades que lo activan)
       operationId: updateChannel
       x-roles: [ADM]
       parameters:
+        - { $ref: "#/components/parameters/ChannelTypeParam" }
         - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
@@ -98,12 +98,13 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
 
   /notification-templates/{templateId}:
-    parameters: [ { name: templateId, in: path, required: true, schema: { type: string, format: uuid } } ]
     get:
       tags: [templates]
       summary: Consultar una plantilla
       operationId: getTemplate
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/TemplateId" }
       responses:
         "200":
           description: Plantilla
@@ -118,6 +119,7 @@ paths:
       operationId: updateTemplate
       x-roles: [ADM]
       parameters:
+        - { $ref: "#/components/parameters/TemplateId" }
         - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
@@ -169,6 +171,8 @@ components:
     Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
     Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
     Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. sentAt,desc" }
+    ChannelTypeParam: { name: channelType, in: path, required: true, schema: { $ref: "#/components/schemas/ChannelType" } }
+    TemplateId: { name: templateId, in: path, required: true, schema: { type: string, format: uuid } }
     IfMatch:
       name: If-Match
       in: header
