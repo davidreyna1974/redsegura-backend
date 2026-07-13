@@ -1,0 +1,23 @@
+# Contract testing (Pact) — workflow separado del gatekeeper de cada servicio.
+# Verifica que ningún servicio rompió un contrato consumido por otro antes de publicar imagen.
+# Esqueleto: se completa cuando existan productores/consumidores con pruebas Pact.
+name: Contract tests (Pact)
+
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pact:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Placeholder
+        run: |
+          echo "Pendiente: ejecutar verificaciones Pact productor/consumidor."
+          echo "Cubre contratos de API (OpenAPI) y de eventos (RabbitMQ)."
+          echo "Se activa cuando existan pruebas Pact en los servicios."

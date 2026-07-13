@@ -1,0 +1,47 @@
+# Gatekeeper de CI (ejemplo Java) — se activa por ruta al scaffoldear el servicio.
+# Requiere que asset-inventory-service esté registrado como <module> en el POM padre.
+name: CI · asset-inventory-service
+
+on:
+  push:
+    paths:
+      - "asset-inventory-service/**"
+      - "pom.xml"
+      - ".github/workflows/ci-asset-inventory-service.yml"
+  pull_request:
+    paths:
+      - "asset-inventory-service/**"
+      - "pom.xml"
+
+permissions:
+  contents: read
+
+jobs:
+  gatekeeper:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build
+        run: mvn -pl asset-inventory-service -am -B clean package
+
+      - name: Tests
+        run: mvn -pl asset-inventory-service -B test
+
+      - name: Lint y formato
+        run: mvn -pl asset-inventory-service -B checkstyle:check spotless:check
+
+      - name: Cobertura (>= 70%)
+        run: mvn -pl asset-inventory-service -B verify
+        # La regla de cobertura (jacoco:check, umbral 70%) está ligada a la fase verify.
+
+      # Nota: los tests de integración usan Testcontainers, que gestiona sus propios
+      # contenedores (PostgreSQL/RabbitMQ) usando el Docker del runner. No se requieren
+      # service containers.
