@@ -1,0 +1,30 @@
+# Gobernanza de contratos (Spectral) — ADR-12.
+# Verifica que TODO <servicio>/openapi.yaml cumple los estandares de redSegura (ADR-08..11).
+# Falla el gate (severity error) si un contrato de Fase A o Fase B no cumple.
+name: Contract governance (Spectral)
+
+on:
+  push:
+    paths:
+      - "**/openapi.yaml"
+      - ".spectral.yaml"
+      - ".github/workflows/contract-governance.yml"
+  pull_request:
+    paths:
+      - "**/openapi.yaml"
+      - ".spectral.yaml"
+
+permissions:
+  contents: read
+
+jobs:
+  spectral:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configurar Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Lint de contratos OpenAPI (Spectral)
+        run: npx --yes @stoplight/spectral-cli lint "**/openapi.yaml" --ruleset .spectral.yaml --fail-severity=error
