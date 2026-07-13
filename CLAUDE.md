@@ -26,7 +26,9 @@ requerimientos funcionales/no funcionales, arquitectura) vive en
 - Service Discovery (Eureka/Consul) y Config Server (Spring Cloud Config) — infraestructura compartida, vive en el repo `management`.
 - Message Broker (RabbitMQ) para comunicación asíncrona entre servicios.
 - Autenticación: OAuth2/OIDC vía Keycloak; JWT propagado a cada microservicio.
-- **Contratos (OpenAPI + catálogo de eventos): pendientes de definir** — ver §Estado actual.
+- **Contratos (OpenAPI + catálogo de eventos): definidos (Fase A).** OpenAPI por servicio en
+  `<servicio>/openapi.yaml`; catálogo de eventos en
+  `../management/documentos/arquitectura/especificaciones/comunicacion_por_eventos.md`.
 
 ---
 
@@ -184,8 +186,8 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
 evento del message broker, verifica el contrato real** — no asumir nombres
 de campos ni estructura de payload. El catálogo de contratos (OpenAPI de
 cada servicio + esquema de cada evento) vive en
-`../management/documentos/arquitectura/memoria_tecnica_global.md` §4 (pendiente de
-crear como parte del siguiente paso, ver §Estado actual).
+`../management/documentos/arquitectura/memoria_tecnica_global.md` §4, con el detalle de
+eventos en `../management/documentos/arquitectura/especificaciones/comunicacion_por_eventos.md`.
 
 ---
 
@@ -245,9 +247,8 @@ Matriz de acceso completa por módulo/acción:
 
 ## 🧱 Estándares de código
 
-Convenciones detalladas: `../management/documentos/arquitectura/estandares_desarrollo.md`
-(pendiente de crear, ver §Estado actual). Mientras tanto, reglas mínimas no
-negociables:
+Convenciones detalladas: `../management/documentos/arquitectura/estandares_desarrollo.md`.
+Reglas mínimas no negociables:
 - Nunca hardcodear URLs/secretos/credenciales de dispositivos — variables de entorno o gestor de secretos.
 - Cada microservicio es dueño exclusivo de su base de datos — nunca acceder directamente a la BD de otro servicio.
 - Inyección de dependencias por constructor (Java) / dependency injection nativa de FastAPI (Python).
@@ -270,12 +271,22 @@ Cobertura mínima: **70% statements** por microservicio.
 
 ## 📦 Estado actual
 
-**Fase:** inicialización — ningún microservicio construido todavía.
+**Fase:** Fundación **completa**; construcción de Fase A **en curso**. Ningún microservicio
+implementado todavía.
+
+**Fundación completada:** arquitectura global documentada (memoria técnica, diagrama,
+estándares, eventos, protocolo de QA — en `management`, ADR-01..07); POM padre del monorepo
+(Java 21, Spring Boot 3.3.5, calidad, MapStruct); **5 contratos OpenAPI de Fase A** validados;
+documentación de ambos repos; repos publicados en GitHub (`redsegura-backend`,
+`redsegura-management`) con branch protection y esqueleto de CI.
 
 **Próximos pasos (en orden):**
-1. Crear los documentos de arquitectura global (`memoria_tecnica_global.md`, `diagrama_arquitectura.md`, `estandares_desarrollo.md`) en `../management/documentos/arquitectura/`.
-2. Definir los contratos de Fase A: OpenAPI de cada uno de los 5 microservicios + catálogo de eventos del message broker.
-3. Propuesta de módulo + casos de prueba de `asset-inventory-service` — primer microservicio a construir (los demás de Fase A dependen de él).
+1. `asset-inventory-service` — primer microservicio (los demás de Fase A dependen de él):
+   propuesta de módulo ✅ → **casos de prueba** (pre-código) → scaffolding (contract-first
+   desde `openapi.yaml`) → implementación → gatekeeper ≥ 70 %.
+2. Resto de servicios de Fase A: `config-backup-service`, `compliance-audit-service`,
+   `alerting-service`, `notification-service`.
+3. Golden path de extremo a extremo en Docker Compose.
 
 > **Mantenimiento:** ante cualquier cambio, seguir el Protocolo de 4 fases y
 > actualizar la memoria técnica del microservicio afectado + la memoria
