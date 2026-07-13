@@ -86,9 +86,14 @@ Suites nuevas: `DeviceServiceIT` (RN1..RN7: alta, unicidad 409, no encontrado 40
 baja lógica excluida del listado, filtro por hostname) y `DeviceControllerIT` (stack completo:
 201/200/404/409/422 en formato RFC 7807, paginación).
 
-**Pendiente (Hito 4 transversal):** seguridad JWT/RBAC, ETag/If-Match (RN8), idempotencia (RN9),
-redacción de `mgmtIp` (RN10), publicación de eventos vía outbox (RN11), bulk import, y Pact de
-eventos `asset.*`.
+**Hito 4a — seguridad JWT/RBAC (2026-07-13):** OAuth2 Resource Server (Keycloak); RBAC por
+endpoint (escritura solo ADM; lectura ADM/OPE/AUD; probes públicos); roles extraídos de
+`realm_access.roles`; `created_by`/`updated_by` desde el JWT (o `system`). `mvn verify` → 28 tests
+(incluye SEC-01 Auditor→403, SEC-02 sin token→401), cobertura ≥70%, 0 Checkstyle.
+
+**Pendiente (Hito 4, resto):** ETag/If-Match (RN8), idempotencia (RN9), redacción de `mgmtIp`
+(RN10), publicación de eventos vía outbox (RN11), bulk import, y Pact de eventos `asset.*`. Nota:
+401/403 aún no salen en formato problem+json (requiere entry point/handler propios) — refinamiento.
 
 **Hito 3b — contract-first estricto (ADR-05):** se cableó **openapi-generator**. El contrato genera
 las interfaces de API (`DevicesApi`) y los DTOs; el `DeviceController` **implementa** la interfaz
