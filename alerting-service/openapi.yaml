@@ -208,6 +208,9 @@ components:
         condition: { type: ["string", "null"] }
         state: { $ref: "#/components/schemas/RuleState" }
         createdAt: { type: string, format: date-time, readOnly: true }
+        createdBy: { type: string, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy: { type: string, readOnly: true }
 
     Alert:
       type: object

@@ -248,6 +248,7 @@ components:
         unsavedChanges: { type: boolean, description: running-config != startup-config (ADR-02) }
         status: { $ref: "#/components/schemas/BackupStatus" }
         failureReason: { type: ["string", "null"] }
+        createdBy: { type: string, readOnly: true, description: "Usuario que disparó el respaldo, o 'scheduler'" }
 
     BatchTargetRequest:
       type: object
@@ -312,6 +313,10 @@ components:
         cron: { type: string }
         target: { $ref: "#/components/schemas/BatchTargetRequest" }
         state: { $ref: "#/components/schemas/ScheduleState" }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        createdBy: { type: string, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy: { type: string, readOnly: true }
 
     PageBackup:
       type: object

@@ -181,6 +181,7 @@ components:
         completedAt: { type: ["string", "null"], format: date-time }
         devicesAudited: { type: integer }
         findingsCreated: { type: integer }
+        createdBy: { type: string, readOnly: true, description: "Usuario que disparó la auditoría, o 'scheduler'" }
 
     Finding:
       type: object

@@ -170,6 +170,8 @@ components:
         channelType: { $ref: "#/components/schemas/ChannelType" }
         enabled: { type: boolean }
         minSeverity: { $ref: "#/components/schemas/Severity" }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy: { type: string, readOnly: true }
 
     TemplateRequest:
       type: object
@@ -188,6 +190,10 @@ components:
         channel: { $ref: "#/components/schemas/ChannelType" }
         subject: { type: ["string", "null"] }
         body: { type: string }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        createdBy: { type: string, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy: { type: string, readOnly: true }
 
     Notification:
       type: object

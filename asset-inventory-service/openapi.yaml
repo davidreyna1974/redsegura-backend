@@ -232,7 +232,9 @@ components:
         criticality: { $ref: "#/components/schemas/Criticality" }
         status: { $ref: "#/components/schemas/DeviceStatus", readOnly: true }
         createdAt: { type: string, format: date-time, readOnly: true }
+        createdBy: { type: string, readOnly: true }
         updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy: { type: string, readOnly: true }
     DeviceCreateRequest:
       type: object
       required: [hostname, mgmtIp, criticality]
