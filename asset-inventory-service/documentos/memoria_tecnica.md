@@ -76,8 +76,25 @@ Suites: `DeviceTest` (dominio, sin BD), `DeviceRepositoryIT` (integración con *
 vía Testcontainers + Flyway: auditoría, versión, unicidad de serial/hostname/mgmtIp),
 `HealthControllerTest`, `AssetInventoryApplicationTests` (arranque de contexto).
 
-**Pendiente (hitos siguientes):** tests de servicio (RN1..RN11), web (controller), seguridad por
-rol, ETag/idempotencia/redacción, y Pact de eventos `asset.*`.
+**Hito 3 — web + servicio (2026-07-13):** `mvn -pl asset-inventory-service verify` → BUILD SUCCESS.
+```
+Tests run: 26, Failures: 0, Errors: 0, Skipped: 0
+Cobertura JaCoCo: LINE 92.3% (umbral 70% cumplido) · BRANCH 56.2%
+Checkstyle: 0 violaciones · Spotless: OK
+```
+Suites nuevas: `DeviceServiceIT` (RN1..RN7: alta, unicidad 409, no encontrado 404, edición parcial,
+baja lógica excluida del listado, filtro por hostname) y `DeviceControllerIT` (stack completo:
+201/200/404/409/422 en formato RFC 7807, paginación).
+
+**Pendiente (Hito 4 transversal):** seguridad JWT/RBAC, ETag/If-Match (RN8), idempotencia (RN9),
+redacción de `mgmtIp` (RN10), publicación de eventos vía outbox (RN11), bulk import, y Pact de
+eventos `asset.*`.
+
+> **Nota de transparencia (ADR-05):** en este hito los DTOs y el controlador se escribieron **a
+> mano** ajustados al contrato (`openapi.yaml`, gobernado por Spectral), en vez de generarlos con
+> `openapi-generator`. El contrato sigue siendo la fuente de verdad; cablear la generación estricta
+> queda como refinamiento pendiente (o se ajusta ADR-05 para aceptar código a mano verificado por
+> gobernanza).
 
 > Nota de entorno: docker-java usa por defecto una API de Docker que Docker Desktop reciente
 > rechaza; se fija `-Dapi.version` en Surefire (POM padre). Testcontainers subido a 1.20.4.

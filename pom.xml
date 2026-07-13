@@ -143,6 +143,10 @@
                         <configLocation>google_checks.xml</configLocation>
                         <!-- Relaja la exigencia de Javadoc obligatorio (ver checkstyle-suppressions.xml). -->
                         <propertyExpansion>org.checkstyle.google.suppressionfilter.config=${maven.multiModuleProjectDirectory}/checkstyle-suppressions.xml</propertyExpansion>
+                        <!-- Solo codigo fuente propio; excluye target/generated-sources (MapStruct). -->
+                        <sourceDirectories>
+                            <sourceDirectory>${project.build.sourceDirectory}</sourceDirectory>
+                        </sourceDirectories>
                         <consoleOutput>true</consoleOutput>
                         <failsOnError>true</failsOnError>
                         <violationSeverity>warning</violationSeverity>
