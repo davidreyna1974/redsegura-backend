@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
+    "https://checkstyle.org/dtds/suppressions_1_2.dtd">
+<!--
+  Supresiones de Checkstyle para el monorepo backend de redSegura.
+  Se conserva el estilo de Google (formato garantizado por Spotless/google-java-format y el resto
+  de reglas de estilo), pero se RELAJA la exigencia de Javadoc en cada tipo/método público: es
+  demasiado ceremonial (main, tests, getters...) y no aporta valor proporcional. La documentación
+  relevante vive en la memoria técnica del módulo y en el openapi.yaml.
+-->
+<suppressions>
+  <suppress checks="MissingJavadocMethod|MissingJavadocType|MissingJavadocPackage|SummaryJavadoc"
+            files=".*"/>
+</suppressions>
