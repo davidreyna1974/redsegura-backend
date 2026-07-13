@@ -2,16 +2,12 @@
 # Requiere que asset-inventory-service esté registrado como <module> en el POM padre.
 name: CI · asset-inventory-service
 
+# Esqueleto: MANUAL por ahora (workflow_dispatch). Al scaffoldear el servicio, cambiar a:
+#   on:
+#     push:      { paths: ["asset-inventory-service/**", "pom.xml"] }
+#     pull_request: { paths: ["asset-inventory-service/**", "pom.xml"] }
 on:
-  push:
-    paths:
-      - "asset-inventory-service/**"
-      - "pom.xml"
-      - ".github/workflows/ci-asset-inventory-service.yml"
-  pull_request:
-    paths:
-      - "asset-inventory-service/**"
-      - "pom.xml"
+  workflow_dispatch:
 
 permissions:
   contents: read
