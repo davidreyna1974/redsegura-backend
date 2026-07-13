@@ -1,0 +1,228 @@
+openapi: 3.1.0
+info:
+  title: compliance-audit-service API
+  description: |
+    Auditoría de cumplimiento de configuraciones vía Playbooks Ansible (RF-11..14).
+    Valida políticas predefinidas (NTP, banner, SNMP community, SSH v2, cifrado de contraseñas,
+    protocolos inseguros) y genera un hallazgo por política incumplida.
+    Roles: ADM=Administrador, OPE=Operador, AUD=Auditor (extensión `x-roles`).
+  version: 0.1.0
+servers:
+  - url: /api/v1
+    description: Ruta base (tras el API Gateway)
+
+tags:
+  - name: audits
+  - name: findings
+  - name: health
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Estado de salud del servicio
+      operationId: getHealth
+      security: []
+      responses:
+        "200": { description: Disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+
+  /audits:
+    post:
+      tags: [audits]
+      summary: Disparar una auditoría de cumplimiento
+      description: Ejecuta los Playbooks Ansible sobre un objetivo (individual o de flota). Asíncrono.
+      operationId: triggerAudit
+      x-roles: [ADM, OPE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AuditRequest" }
+      responses:
+        "202": { description: Auditoría encolada, content: { application/json: { schema: { $ref: "#/components/schemas/Audit" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+    get:
+      tags: [audits]
+      summary: Listar auditorías
+      operationId: listAudits
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: deviceId, in: query, schema: { type: string, format: uuid } }
+        - { name: hostname, in: query, schema: { type: string } }
+        - { name: mgmtIp, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/AuditStatus" } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+        - { $ref: "#/components/parameters/Sort" }
+      responses:
+        "200": { description: Página de auditorías, content: { application/json: { schema: { $ref: "#/components/schemas/PageAudit" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /audits/{auditId}:
+    parameters: [ { name: auditId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [audits]
+      summary: Detalle/estado de una auditoría
+      operationId: getAudit
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200": { description: Auditoría, content: { application/json: { schema: { $ref: "#/components/schemas/Audit" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /findings:
+    get:
+      tags: [findings]
+      summary: Listar hallazgos de cumplimiento
+      operationId: listFindings
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: hostname, in: query, schema: { type: string } }
+        - { name: mgmtIp, in: query, schema: { type: string } }
+        - { name: deviceId, in: query, schema: { type: string, format: uuid } }
+        - { name: policy, in: query, schema: { type: string } }
+        - { name: severity, in: query, schema: { $ref: "#/components/schemas/Severity" } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/FindingStatus" } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+        - { $ref: "#/components/parameters/Sort" }
+      responses:
+        "200": { description: Página de hallazgos, content: { application/json: { schema: { $ref: "#/components/schemas/PageFinding" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /findings/{findingId}:
+    parameters: [ { name: findingId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [findings]
+      summary: Detalle de un hallazgo
+      operationId: getFinding
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200": { description: Hallazgo, content: { application/json: { schema: { $ref: "#/components/schemas/Finding" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /devices/{deviceId}/compliance-history:
+    parameters: [ { $ref: "#/components/parameters/DeviceId" } ]
+    get:
+      tags: [findings]
+      summary: Histórico de cumplimiento de un dispositivo
+      operationId: getComplianceHistory
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: policy, in: query, schema: { type: string } }
+        - { name: severity, in: query, schema: { $ref: "#/components/schemas/Severity" } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+      responses:
+        "200": { description: Página de hallazgos históricos, content: { application/json: { schema: { $ref: "#/components/schemas/PageFinding" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: JWT emitido por Keycloak }
+
+  parameters:
+    DeviceId: { name: deviceId, in: path, required: true, schema: { type: string, format: uuid } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
+    Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. createdAt,desc" }
+
+  responses:
+    BadRequest: { description: Petición malformada, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Unauthorized: { description: No autenticado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Forbidden: { description: Sin permiso, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    NotFound: { description: No encontrado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+
+  schemas:
+    Health: { type: object, properties: { status: { type: string, example: UP } } }
+    Severity: { type: string, enum: [CRITICA, ALTA, MEDIA, BAJA] }
+    AuditStatus: { type: string, enum: [QUEUED, IN_PROGRESS, COMPLETED, FAILED] }
+    FindingStatus: { type: string, enum: [ABIERTO, RESUELTO] }
+
+    AuditRequest:
+      type: object
+      description: "Indicar exactamente uno: scope, deviceIds o filter."
+      properties:
+        scope: { type: string, enum: [all] }
+        deviceIds: { type: array, items: { type: string, format: uuid } }
+        filter:
+          type: object
+          properties:
+            hostname: { type: string }
+            mgmtIp: { type: string }
+
+    Audit:
+      type: object
+      properties:
+        auditId: { type: string, format: uuid, readOnly: true }
+        status: { $ref: "#/components/schemas/AuditStatus" }
+        triggeredAt: { type: string, format: date-time }
+        completedAt: { type: ["string", "null"], format: date-time }
+        devicesAudited: { type: integer }
+        findingsCreated: { type: integer }
+        createdBy: { type: string, readOnly: true, description: "Usuario que disparó la auditoría, o 'scheduler'" }
+
+    Finding:
+      type: object
+      required: [findingId, deviceId, policy, severity, status]
+      properties:
+        findingId: { type: string, format: uuid, readOnly: true }
+        deviceId: { type: string, format: uuid }
+        auditId: { type: string, format: uuid }
+        policy: { type: string, example: SSH_V2_REQUIRED }
+        severity: { $ref: "#/components/schemas/Severity" }
+        evidence: { type: string, example: "transport input telnet enabled on vty 0 4" }
+        status: { $ref: "#/components/schemas/FindingStatus" }
+        createdAt: { type: string, format: date-time }
+
+    PageAudit:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/Audit" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    PageFinding:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/Finding" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: AUDIT_NOT_FOUND }
+        message: { type: string }
+        traceId: { type: string }
+        timestamp: { type: string, format: date-time }

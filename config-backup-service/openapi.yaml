@@ -1,0 +1,350 @@
+openapi: 3.1.0
+info:
+  title: config-backup-service API
+  description: |
+    Respaldo y versionado de configuraciones de dispositivos de red (RF-06..10).
+    Captura running-config y startup-config (ADR-02), versiona el contenido en un repositorio
+    Git interno y guarda metadatos en PostgreSQL (ADR-01). Detecta drift (RF-09) de forma
+    implícita (durante el respaldo) y mediante drift-check dedicado.
+    Roles: ADM=Administrador, OPE=Operador, AUD=Auditor (extensión `x-roles`).
+  version: 0.1.0
+servers:
+  - url: /api/v1
+    description: Ruta base (tras el API Gateway)
+
+tags:
+  - name: backups
+  - name: drift
+  - name: schedules
+  - name: health
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Estado de salud del servicio
+      operationId: getHealth
+      security: []
+      responses:
+        "200": { description: Disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+
+  /devices/{deviceId}/backups:
+    parameters: [ { $ref: "#/components/parameters/DeviceId" } ]
+    post:
+      tags: [backups]
+      summary: Respaldo bajo demanda de un dispositivo individual
+      description: Captura running-config y startup-config vía SSH; calcula unsavedChanges.
+      operationId: backupDevice
+      x-roles: [ADM, OPE]
+      responses:
+        "201": { description: Respaldo creado, content: { application/json: { schema: { $ref: "#/components/schemas/Backup" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+
+  /backups:
+    post:
+      tags: [backups]
+      summary: Respaldo por lotes (varios/todos)
+      description: Ejecución asíncrona; devuelve un jobId para seguir el avance.
+      operationId: backupBatch
+      x-roles: [ADM, OPE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BatchTargetRequest" }
+      responses:
+        "202": { description: Job encolado, content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+    get:
+      tags: [backups]
+      summary: Historial global de respaldos
+      operationId: listBackups
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: hostname, in: query, schema: { type: string } }
+        - { name: mgmtIp, in: query, schema: { type: string } }
+        - { name: deviceId, in: query, schema: { type: string, format: uuid } }
+        - { name: unsavedChanges, in: query, schema: { type: boolean } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/BackupStatus" } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+        - { $ref: "#/components/parameters/Sort" }
+      responses:
+        "200": { description: Página de respaldos, content: { application/json: { schema: { $ref: "#/components/schemas/PageBackup" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /backups/jobs/{jobId}:
+    parameters: [ { $ref: "#/components/parameters/JobId" } ]
+    get:
+      tags: [backups]
+      summary: Estado de un job de respaldo por lotes
+      operationId: getBackupJob
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200": { description: Estado del job, content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /backups/{backupId}:
+    parameters: [ { name: backupId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [backups]
+      summary: Detalle de un respaldo
+      operationId: getBackup
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200": { description: Respaldo, content: { application/json: { schema: { $ref: "#/components/schemas/Backup" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /devices/{deviceId}/backups/diff:
+    parameters: [ { $ref: "#/components/parameters/DeviceId" } ]
+    get:
+      tags: [backups]
+      summary: Diff entre dos respaldos guardados del mismo dispositivo
+      operationId: diffBackups
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string }, description: Referencia de versión origen }
+        - { name: to, in: query, required: true, schema: { type: string }, description: Referencia de versión destino }
+        - { name: configType, in: query, schema: { $ref: "#/components/schemas/ConfigType" }, description: "running (por defecto) o startup" }
+      responses:
+        "200": { description: Diferencia textual, content: { application/json: { schema: { $ref: "#/components/schemas/DiffResult" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /devices/{deviceId}/drift-check:
+    parameters: [ { $ref: "#/components/parameters/DeviceId" } ]
+    post:
+      tags: [drift]
+      summary: Drift-check de un dispositivo (sin crear respaldo)
+      description: Compara running-config en vivo vs último respaldo; emite config.drift_detected si difiere.
+      operationId: driftCheckDevice
+      x-roles: [ADM, OPE]
+      responses:
+        "200": { description: Resultado del drift-check, content: { application/json: { schema: { $ref: "#/components/schemas/DriftCheckResult" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /drift-checks:
+    post:
+      tags: [drift]
+      summary: Drift-check por lotes (flota)
+      operationId: driftCheckBatch
+      x-roles: [ADM, OPE]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BatchTargetRequest" }
+      responses:
+        "202": { description: Job encolado, content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+
+  /drift-checks/jobs/{jobId}:
+    parameters: [ { $ref: "#/components/parameters/JobId" } ]
+    get:
+      tags: [drift]
+      summary: Estado de un job de drift-check por lotes
+      operationId: getDriftJob
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200": { description: Estado del job, content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /schedules:
+    post:
+      tags: [schedules]
+      summary: Programar una tarea recurrente (backup o drift-check)
+      operationId: createSchedule
+      x-roles: [ADM]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScheduleCreateRequest" }
+      responses:
+        "201": { description: Programación creada, content: { application/json: { schema: { $ref: "#/components/schemas/Schedule" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+    get:
+      tags: [schedules]
+      summary: Listar programaciones
+      operationId: listSchedules
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: type, in: query, schema: { $ref: "#/components/schemas/ScheduleType" } }
+        - { name: deviceId, in: query, schema: { type: string, format: uuid } }
+        - { name: hostname, in: query, schema: { type: string } }
+        - { name: mgmtIp, in: query, schema: { type: string } }
+        - { name: estado, in: query, schema: { $ref: "#/components/schemas/ScheduleState" } }
+        - { name: frecuencia, in: query, schema: { type: string } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+      responses:
+        "200": { description: Página de programaciones, content: { application/json: { schema: { $ref: "#/components/schemas/PageSchedule" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: JWT emitido por Keycloak }
+
+  parameters:
+    DeviceId: { name: deviceId, in: path, required: true, schema: { type: string, format: uuid } }
+    JobId: { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
+    Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. capturedAt,desc" }
+
+  responses:
+    BadRequest: { description: Petición malformada, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Unauthorized: { description: No autenticado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Forbidden: { description: Sin permiso, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    NotFound: { description: No encontrado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+
+  schemas:
+    Health: { type: object, properties: { status: { type: string, example: UP } } }
+    ConfigType: { type: string, enum: [running, startup], default: running }
+    BackupStatus: { type: string, enum: [SUCCESS, FAILED] }
+    JobStatus: { type: string, enum: [QUEUED, IN_PROGRESS, COMPLETED, FAILED] }
+    ScheduleType: { type: string, enum: [backup, drift-check] }
+    ScheduleState: { type: string, enum: [activa, pausada] }
+
+    Backup:
+      type: object
+      required: [backupId, deviceId, capturedAt, status, unsavedChanges]
+      properties:
+        backupId: { type: string, format: uuid, readOnly: true }
+        deviceId: { type: string, format: uuid }
+        commit: { type: string, description: Commit del repo Git interno, example: a1b2c3d }
+        capturedAt: { type: string, format: date-time }
+        unsavedChanges: { type: boolean, description: running-config != startup-config (ADR-02) }
+        status: { $ref: "#/components/schemas/BackupStatus" }
+        failureReason: { type: ["string", "null"] }
+        createdBy: { type: string, readOnly: true, description: "Usuario que disparó el respaldo, o 'scheduler'" }
+
+    BatchTargetRequest:
+      type: object
+      description: "Indicar exactamente uno: scope, deviceIds o filter."
+      properties:
+        scope: { type: string, enum: [all] }
+        deviceIds: { type: array, items: { type: string, format: uuid } }
+        filter:
+          type: object
+          properties:
+            hostname: { type: string }
+            mgmtIp: { type: string }
+
+    Job:
+      type: object
+      properties:
+        jobId: { type: string, format: uuid, readOnly: true }
+        type: { type: string, enum: [backup, drift-check] }
+        status: { $ref: "#/components/schemas/JobStatus" }
+        total: { type: integer }
+        completed: { type: integer }
+        failed: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              deviceId: { type: string, format: uuid }
+              outcome: { type: string, example: SUCCESS }
+              detail: { type: string }
+
+    DiffResult:
+      type: object
+      properties:
+        deviceId: { type: string, format: uuid }
+        from: { type: string }
+        to: { type: string }
+        configType: { $ref: "#/components/schemas/ConfigType" }
+        diff: { type: string, description: Diferencia unificada línea por línea }
+
+    DriftCheckResult:
+      type: object
+      properties:
+        deviceId: { type: string, format: uuid }
+        drift: { type: boolean }
+        driftRef: { type: ["string", "null"] }
+        checkedAt: { type: string, format: date-time }
+
+    ScheduleCreateRequest:
+      type: object
+      required: [type, cron, target]
+      properties:
+        type: { $ref: "#/components/schemas/ScheduleType" }
+        cron: { type: string, description: Expresión cron, example: "0 2 * * *" }
+        target: { $ref: "#/components/schemas/BatchTargetRequest" }
+
+    Schedule:
+      type: object
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        type: { $ref: "#/components/schemas/ScheduleType" }
+        cron: { type: string }
+        target: { $ref: "#/components/schemas/BatchTargetRequest" }
+        state: { $ref: "#/components/schemas/ScheduleState" }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        createdBy: { type: string, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy: { type: string, readOnly: true }
+
+    PageBackup:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/Backup" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    PageSchedule:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/Schedule" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: DEVICE_NOT_FOUND }
+        message: { type: string }
+        traceId: { type: string }
+        timestamp: { type: string, format: date-time }

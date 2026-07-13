@@ -1,0 +1,239 @@
+openapi: 3.1.0
+info:
+  title: notification-service API
+  description: |
+    Envío efectivo de notificaciones (RF-32..33). Dirigido por eventos: consume alert.created y
+    envía por los canales configurados (email/Telegram) según la severidad, usando plantillas
+    diferenciadas por tipo de evento. Canales como adaptadores enchufables (ADR-03).
+    Roles: ADM=Administrador, OPE=Operador, AUD=Auditor (extensión `x-roles`).
+  version: 0.1.0
+servers:
+  - url: /api/v1
+    description: Ruta base (tras el API Gateway)
+
+tags:
+  - name: channels
+  - name: templates
+  - name: notifications
+  - name: health
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Estado de salud del servicio
+      operationId: getHealth
+      security: []
+      responses:
+        "200": { description: Disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+
+  /notification-channels:
+    get:
+      tags: [channels]
+      summary: Listar la configuración de canales
+      operationId: listChannels
+      x-roles: [ADM]
+      responses:
+        "200":
+          description: Canales configurados
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/ChannelConfig" } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /notification-channels/{channelType}:
+    parameters: [ { name: channelType, in: path, required: true, schema: { $ref: "#/components/schemas/ChannelType" } } ]
+    put:
+      tags: [channels]
+      summary: Configurar un canal (habilitación y severidades que lo activan)
+      operationId: updateChannel
+      x-roles: [ADM]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ChannelConfigRequest" }
+      responses:
+        "200": { description: Canal actualizado, content: { application/json: { schema: { $ref: "#/components/schemas/ChannelConfig" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+
+  /notification-templates:
+    get:
+      tags: [templates]
+      summary: Listar plantillas de mensaje
+      operationId: listTemplates
+      x-roles: [ADM]
+      parameters:
+        - { name: eventType, in: query, schema: { type: string } }
+        - { name: channel, in: query, schema: { $ref: "#/components/schemas/ChannelType" } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+      responses:
+        "200": { description: Página de plantillas, content: { application/json: { schema: { $ref: "#/components/schemas/PageTemplate" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /notification-templates/{templateId}:
+    parameters: [ { name: templateId, in: path, required: true, schema: { type: string, format: uuid } } ]
+    get:
+      tags: [templates]
+      summary: Consultar una plantilla
+      operationId: getTemplate
+      x-roles: [ADM]
+      responses:
+        "200": { description: Plantilla, content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [templates]
+      summary: Actualizar una plantilla
+      operationId: updateTemplate
+      x-roles: [ADM]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/TemplateRequest" }
+      responses:
+        "200": { description: Plantilla actualizada, content: { application/json: { schema: { $ref: "#/components/schemas/Template" } } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+
+  /notifications:
+    get:
+      tags: [notifications]
+      summary: Historial de envíos
+      operationId: listNotifications
+      x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { name: channel, in: query, schema: { $ref: "#/components/schemas/ChannelType" } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/NotificationStatus" } }
+        - { name: severity, in: query, schema: { $ref: "#/components/schemas/Severity" } }
+        - { name: deviceId, in: query, schema: { type: string, format: uuid } }
+        - { name: hostname, in: query, schema: { type: string } }
+        - { name: mgmtIp, in: query, schema: { type: string } }
+        - { name: alertId, in: query, schema: { type: string, format: uuid } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { $ref: "#/components/parameters/Page" }
+        - { $ref: "#/components/parameters/Size" }
+        - { $ref: "#/components/parameters/Sort" }
+      responses:
+        "200": { description: Página de notificaciones, content: { application/json: { schema: { $ref: "#/components/schemas/PageNotification" } } } }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: JWT emitido por Keycloak }
+
+  parameters:
+    Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
+    Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. sentAt,desc" }
+
+  responses:
+    BadRequest: { description: Petición malformada, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Unauthorized: { description: No autenticado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    Forbidden: { description: Sin permiso, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    NotFound: { description: No encontrado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+
+  schemas:
+    Health: { type: object, properties: { status: { type: string, example: UP } } }
+    Severity: { type: string, enum: [CRITICA, ALTA, MEDIA, BAJA] }
+    ChannelType: { type: string, enum: [EMAIL, TELEGRAM] }
+    NotificationStatus: { type: string, enum: [ENVIADO, FALLIDO] }
+
+    ChannelConfigRequest:
+      type: object
+      required: [enabled]
+      properties:
+        enabled: { type: boolean }
+        minSeverity: { $ref: "#/components/schemas/Severity", description: "Severidad mínima que activa este canal" }
+
+    ChannelConfig:
+      type: object
+      properties:
+        channelType: { $ref: "#/components/schemas/ChannelType" }
+        enabled: { type: boolean }
+        minSeverity: { $ref: "#/components/schemas/Severity" }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy: { type: string, readOnly: true }
+
+    TemplateRequest:
+      type: object
+      required: [eventType, channel, body]
+      properties:
+        eventType: { type: string, example: compliance.finding_created }
+        channel: { $ref: "#/components/schemas/ChannelType" }
+        subject: { type: ["string", "null"], description: "Asunto (email); no aplica a Telegram" }
+        body: { type: string, description: "Cuerpo con placeholders, p. ej. {{deviceId}}" }
+
+    Template:
+      type: object
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        eventType: { type: string }
+        channel: { $ref: "#/components/schemas/ChannelType" }
+        subject: { type: ["string", "null"] }
+        body: { type: string }
+        createdAt: { type: string, format: date-time, readOnly: true }
+        createdBy: { type: string, readOnly: true }
+        updatedAt: { type: string, format: date-time, readOnly: true }
+        updatedBy: { type: string, readOnly: true }
+
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid, readOnly: true }
+        alertId: { type: string, format: uuid }
+        channel: { $ref: "#/components/schemas/ChannelType" }
+        severity: { $ref: "#/components/schemas/Severity" }
+        deviceId: { type: ["string", "null"], format: uuid }
+        status: { $ref: "#/components/schemas/NotificationStatus" }
+        failureReason: { type: ["string", "null"] }
+        sentAt: { type: string, format: date-time }
+
+    PageTemplate:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/Template" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    PageNotification:
+      type: object
+      properties:
+        content: { type: array, items: { $ref: "#/components/schemas/Notification" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+        first: { type: boolean }
+        last: { type: boolean }
+
+    ApiError:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, example: TEMPLATE_NOT_FOUND }
+        message: { type: string }
+        traceId: { type: string }
+        timestamp: { type: string, format: date-time }

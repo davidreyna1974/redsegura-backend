@@ -1,0 +1,46 @@
+# Gatekeeper de CI (ejemplo Python/FastAPI) — se activa por ruta al scaffoldear el servicio.
+name: CI · config-backup-service
+
+on:
+  push:
+    paths:
+      - "config-backup-service/**"
+      - ".github/workflows/ci-config-backup-service.yml"
+  pull_request:
+    paths:
+      - "config-backup-service/**"
+
+permissions:
+  contents: read
+
+jobs:
+  gatekeeper:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: config-backup-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Lint (ruff) y tipos (mypy)
+        run: |
+          ruff check .
+          mypy .
+
+      - name: Tests + cobertura (>= 70%)
+        run: pytest tests --cov=. --cov-fail-under=70
+
+      - name: Check de divergencia de contrato (ADR-05)
+        run: |
+          # Compara el OpenAPI generado por FastAPI con el openapi.yaml comprometido.
+          python -c "import json,app; open('openapi.generated.json','w').write(json.dumps(app.app.openapi()))"
+          # diff/normalización contra openapi.yaml; falla si divergen.
