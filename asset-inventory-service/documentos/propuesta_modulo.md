@@ -153,7 +153,32 @@ Enums: Criticality {ALTA,MEDIA,BAJA} · DeviceStatus {ACTIVO,BAJA} · DeviceType
   sus eventos obliga a re-probar los consumidores (config-backup, compliance-audit) con Pact.
 - **Persistencia:** migraciones versionadas con **Flyway** (estándares §11).
 
-## 8. Checklist de apertura (antes de codificar)
+## 8. Revisión contra estándares de industria
+
+**a) Cumplimiento de estándares globales** (heredados; gobernados por Spectral/gatekeeper):
+```
+[x] Errores RFC 7807 · [x] probes liveness/readiness · [x] Idempotency-Key en creaciones
+[x] ETag/If-Match en mutaciones · [x] columnas de auditoría · [x] redacción de campos por rol
+[x] paginación y filtrado estándar · [x] RBAC por operación · [x] logging estructurado
+```
+
+**b) Estándares específicos del dominio (CMDB · DCIM · IPAM):**
+
+| Estándar/patrón del dominio | ¿Aplica? | Cómo se incorpora / decisión |
+|---|---|---|
+| Identidad estable (serial/asset tag) — ITIL CMDB | **sí** | `serialNumber` inmutable + `assetTag` (RN1/RN2) |
+| Tipo/rol de dispositivo (CIM) | **sí** | `deviceType` (ROUTER/SWITCH/FIREWALL/HOST/AP/OTHER) |
+| Ubicación estructurada — DCIM (NetBox) | **sí** | `Location {site,room,row,rack,rackUnit}` embebida |
+| Sites/Racks como recursos con CRUD | no (por ahora) | embebido; recursos aparte → backlog |
+| Ciclo de vida rico (staging→active→…→disposed) | no (por ahora) | `status` ACTIVO/BAJA; resto → backlog |
+| Reconciliación / auto-discovery (SNMP/LLDP) | no (futuro) | backlog; `telemetry-collector` podría alimentarlo |
+| IPAM (espacio IP/VLAN) | no (futuro) | backlog |
+
+**c) Hallazgos transversales promovidos:** esta revisión originó **ADR-08** (RFC 7807), **ADR-09**
+(Idempotency-Key + ETag/If-Match), **ADR-10** (probes), **ADR-11** (redacción por rol + log de
+seguridad) y **ADR-12** (gobernanza con Spectral) — ahora globales y aplicables a los 10 servicios.
+
+## 9. Checklist de apertura (antes de codificar)
 
 ```
 [x] Propuesta creada (este documento).
@@ -161,5 +186,6 @@ Enums: Criticality {ALTA,MEDIA,BAJA} · DeviceStatus {ACTIVO,BAJA} · DeviceType
 [ ] memoria_tecnica.md del módulo iniciada.
 [x] Contrato propio verificado (openapi.yaml, redocly 0 errores).
 [x] Contratos salientes (eventos) verificados contra comunicacion_por_eventos.md §4.1.
+[x] Revisión contra estándares de industria (Sección 8) completada.
 [x] Gate de seguridad previsto para todos los endpoints (escritura solo ADM; probar Auditor→403).
 ```
