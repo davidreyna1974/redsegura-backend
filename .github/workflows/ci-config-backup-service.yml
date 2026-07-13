@@ -1,14 +1,12 @@
 # Gatekeeper de CI (ejemplo Python/FastAPI) — se activa por ruta al scaffoldear el servicio.
 name: CI · config-backup-service
 
+# Esqueleto: MANUAL por ahora (workflow_dispatch). Al scaffoldear el servicio, cambiar a:
+#   on:
+#     push:      { paths: ["config-backup-service/**"] }
+#     pull_request: { paths: ["config-backup-service/**"] }
 on:
-  push:
-    paths:
-      - "config-backup-service/**"
-      - ".github/workflows/ci-config-backup-service.yml"
-  pull_request:
-    paths:
-      - "config-backup-service/**"
+  workflow_dispatch:
 
 permissions:
   contents: read
