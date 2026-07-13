@@ -20,15 +20,24 @@ security:
   - bearerAuth: []
 
 paths:
-  /health:
+  /health/liveness:
     get:
       tags: [health]
-      summary: Estado de salud del servicio
-      operationId: getHealth
+      summary: Liveness probe (¿el proceso vive?)
+      operationId: getLiveness
       security: []
       responses:
-        "200": { description: Disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "200": { description: Vivo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
         "503": { description: No disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+  /health/readiness:
+    get:
+      tags: [health]
+      summary: Readiness probe (¿listo? BD/broker OK)
+      operationId: getReadiness
+      security: []
+      responses:
+        "200": { description: Listo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No listo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
 
   /audits:
     post:
@@ -37,6 +46,8 @@ paths:
       description: Ejecuta los Playbooks Ansible sobre un objetivo (individual o de flota). Asíncrono.
       operationId: triggerAudit
       x-roles: [ADM, OPE]
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
       requestBody:
         required: true
         content:
@@ -146,13 +157,19 @@ components:
     Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
     Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
     Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. createdAt,desc" }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Clave de idempotencia para deduplicar reintentos (ADR-09).
+      schema: { type: string }
 
   responses:
-    BadRequest: { description: Petición malformada, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    Unauthorized: { description: No autenticado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    Forbidden: { description: Sin permiso, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    NotFound: { description: No encontrado, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
-    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } } }
+    BadRequest: { description: Petición malformada, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    Unauthorized: { description: No autenticado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    Forbidden: { description: Sin permiso, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    NotFound: { description: No encontrado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    UnprocessableEntity: { description: Validación de negocio fallida, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
 
   schemas:
     Health: { type: object, properties: { status: { type: string, example: UP } } }
@@ -218,11 +235,13 @@ components:
         first: { type: boolean }
         last: { type: boolean }
 
-    ApiError:
+    Problem:
       type: object
-      required: [code, message]
+      description: Error en formato RFC 7807/9457 (application/problem+json)
       properties:
-        code: { type: string, example: AUDIT_NOT_FOUND }
-        message: { type: string }
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
         traceId: { type: string }
-        timestamp: { type: string, format: date-time }
