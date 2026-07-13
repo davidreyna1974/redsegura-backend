@@ -275,9 +275,11 @@ Cobertura mínima: **70% statements** por microservicio.
 implementado todavía.
 
 **Fundación completada:** arquitectura global documentada (memoria técnica, diagrama,
-estándares, eventos, protocolo de QA — en `management`, ADR-01..07); POM padre del monorepo
-(Java 21, Spring Boot 3.3.5, calidad, MapStruct); **5 contratos OpenAPI de Fase A** validados;
-documentación de ambos repos; repos publicados en GitHub (`redsegura-backend`,
+estándares, eventos, protocolo de QA — en `management`, **ADR-01..12**); POM padre del monorepo
+(Java 21, Spring Boot 3.3.5, calidad, MapStruct); **5 contratos OpenAPI de Fase A** validados y
+**sintonizados con estándares de industria** (RFC 7807, health probes, Idempotency-Key,
+ETag/If-Match) y **gobernados en CI con Spectral** (`.spectral.yaml`, ADR-12); documentación de
+ambos repos; repos publicados en GitHub (`redsegura-backend`,
 `redsegura-management`) con branch protection y esqueleto de CI.
 
 **Próximos pasos (en orden):**
