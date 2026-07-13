@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.is;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -195,5 +196,69 @@ class DeviceControllerIT extends AbstractIntegrationTest {
     mockMvc
         .perform(delete("/api/v1/devices/{id}", id).with(admin()).header("If-Match", "\"0\""))
         .andExpect(status().isNoContent());
+  }
+
+  private String createAndGetId() throws Exception {
+    String response =
+        mockMvc
+            .perform(
+                post("/api/v1/devices")
+                    .with(admin())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body("S1", "SW1", "10.0.0.1")))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    return objectMapper.readTree(response).get("id").asText();
+  }
+
+  private static final MediaType MERGE_PATCH = MediaType.valueOf("application/merge-patch+json");
+
+  /** CRUD-05: PATCH con If-Match correcto -> 200 y ETag incrementado. */
+  @Test
+  void patch_withCorrectIfMatch_returns200() throws Exception {
+    String id = createAndGetId();
+
+    mockMvc
+        .perform(
+            patch("/api/v1/devices/{id}", id)
+                .with(admin())
+                .header("If-Match", "\"0\"")
+                .contentType(MERGE_PATCH)
+                .content("{\"hostname\":\"SW1-NEW\"}"))
+        .andExpect(status().isOk())
+        .andExpect(header().string("ETag", "\"1\""))
+        .andExpect(jsonPath("$.hostname", is("SW1-NEW")));
+  }
+
+  /** FLOW-02/RN8: PATCH con If-Match desactualizado -> 412. */
+  @Test
+  void patch_withStaleIfMatch_returns412() throws Exception {
+    String id = createAndGetId();
+
+    mockMvc
+        .perform(
+            patch("/api/v1/devices/{id}", id)
+                .with(admin())
+                .header("If-Match", "\"999\"")
+                .contentType(MERGE_PATCH)
+                .content("{\"hostname\":\"SW1-NEW\"}"))
+        .andExpect(status().isPreconditionFailed())
+        .andExpect(jsonPath("$.code", is("PRECONDITION_FAILED")));
+  }
+
+  /** FLOW-03/RN8: PATCH sin If-Match -> 428. */
+  @Test
+  void patch_withoutIfMatch_returns428() throws Exception {
+    String id = createAndGetId();
+
+    mockMvc
+        .perform(
+            patch("/api/v1/devices/{id}", id)
+                .with(admin())
+                .contentType(MERGE_PATCH)
+                .content("{\"hostname\":\"SW1-NEW\"}"))
+        .andExpect(status().isPreconditionRequired())
+        .andExpect(jsonPath("$.code", is("PRECONDITION_REQUIRED")));
   }
 }

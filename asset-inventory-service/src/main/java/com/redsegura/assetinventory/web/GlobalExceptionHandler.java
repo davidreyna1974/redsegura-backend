@@ -3,6 +3,7 @@ package com.redsegura.assetinventory.web;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
+import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -10,6 +11,7 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -38,6 +40,29 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   ProblemDetail handleDecommissioned(DeviceDecommissionedException ex) {
     return problem(
         HttpStatus.CONFLICT, "Dispositivo dado de baja", ex.getMessage(), "DEVICE_DECOMMISSIONED");
+  }
+
+  /** RN8: el If-Match no coincide con la versión actual -> 412. */
+  @ExceptionHandler(PreconditionFailedException.class)
+  ProblemDetail handlePreconditionFailed(PreconditionFailedException ex) {
+    return problem(
+        HttpStatus.PRECONDITION_FAILED,
+        "Precondición fallida",
+        ex.getMessage(),
+        "PRECONDITION_FAILED");
+  }
+
+  /** RN8: falta la cabecera If-Match obligatoria -> 428. */
+  @ExceptionHandler(MissingRequestHeaderException.class)
+  ProblemDetail handleMissingHeader(MissingRequestHeaderException ex) {
+    if ("If-Match".equalsIgnoreCase(ex.getHeaderName())) {
+      return problem(
+          HttpStatus.PRECONDITION_REQUIRED,
+          "Falta If-Match",
+          "La cabecera If-Match es obligatoria",
+          "PRECONDITION_REQUIRED");
+    }
+    return problem(HttpStatus.BAD_REQUEST, "Cabecera faltante", ex.getMessage(), "MISSING_HEADER");
   }
 
   /** Validación de Bean Validation → 422 (entidad bien formada pero semánticamente inválida). */

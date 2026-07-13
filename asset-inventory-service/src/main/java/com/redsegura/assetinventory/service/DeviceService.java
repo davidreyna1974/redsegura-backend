@@ -7,6 +7,7 @@ import com.redsegura.assetinventory.domain.Location;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
+import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import com.redsegura.assetinventory.generated.model.Device;
 import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
@@ -18,12 +19,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Lógica de negocio del inventario (RN1..RN7). Recibe/devuelve los DTOs generados del contrato
- * (ADR-05) y opera sobre la entidad de dominio; los enums generados se puentean por nombre.
+ * Lógica de negocio del inventario (RN1..RN11). Recibe/devuelve los DTOs generados del contrato
+ * (ADR-05) y opera sobre la entidad de dominio; los enums generados se puentean por nombre. Las
+ * lecturas y escrituras devuelven la versión para el ETag (ADR-09).
  */
 @Service
 public class DeviceService {
@@ -38,7 +41,7 @@ public class DeviceService {
 
   /** Alta de dispositivo. La unicidad (RN1) la garantiza el índice único, no un chequeo previo. */
   @Transactional
-  public Device create(DeviceCreateRequest req) {
+  public VersionedDevice create(DeviceCreateRequest req) {
     var entity =
         new com.redsegura.assetinventory.domain.Device(
             req.getSerialNumber(),
@@ -54,8 +57,9 @@ public class DeviceService {
   }
 
   @Transactional(readOnly = true)
-  public Device findById(UUID id) {
-    return mapper.toResponse(getOrThrow(id));
+  public VersionedDevice findById(UUID id) {
+    var entity = getOrThrow(id);
+    return new VersionedDevice(mapper.toResponse(entity), entity.getVersion());
   }
 
   @Transactional(readOnly = true)
@@ -77,9 +81,10 @@ public class DeviceService {
 
   /** Reemplazo completo (PUT). */
   @Transactional
-  public Device replace(UUID id, DeviceUpdateFull req) {
+  public VersionedDevice replace(UUID id, long expectedVersion, DeviceUpdateFull req) {
     return applyUpdate(
         id,
+        expectedVersion,
         req.getHostname(),
         req.getMgmtIp(),
         req.getDeviceType(),
@@ -92,9 +97,10 @@ public class DeviceService {
 
   /** Edición parcial (PATCH, JSON Merge Patch). */
   @Transactional
-  public Device update(UUID id, DeviceUpdateRequest req) {
+  public VersionedDevice update(UUID id, long expectedVersion, DeviceUpdateRequest req) {
     return applyUpdate(
         id,
+        expectedVersion,
         req.getHostname(),
         req.getMgmtIp(),
         req.getDeviceType(),
@@ -107,18 +113,21 @@ public class DeviceService {
 
   /** Baja lógica (soft delete, RN6). */
   @Transactional
-  public void decommission(UUID id) {
+  public void decommission(UUID id, long expectedVersion) {
     var entity = getOrThrow(id);
+    checkVersion(entity, expectedVersion);
     entity.decommission();
-    repository.save(entity);
+    saveEntity(entity);
   }
 
   /**
    * Aplica los campos no nulos a la entidad. {@code serialNumber} y {@code status} no se editan por
-   * API (RN2/RN7). Un dispositivo dado de baja no es editable (RN6).
+   * API (RN2/RN7). Un dispositivo dado de baja no es editable (RN6). Se valida el {@code If-Match}
+   * contra la versión actual (RN8).
    */
-  private Device applyUpdate(
+  private VersionedDevice applyUpdate(
       UUID id,
+      long expectedVersion,
       String hostname,
       String mgmtIp,
       com.redsegura.assetinventory.generated.model.DeviceType deviceType,
@@ -128,6 +137,7 @@ public class DeviceService {
       com.redsegura.assetinventory.generated.model.Location location,
       com.redsegura.assetinventory.generated.model.Criticality criticality) {
     var entity = getOrThrow(id);
+    checkVersion(entity, expectedVersion);
     if (entity.getStatus() == DeviceStatus.BAJA) {
       throw new DeviceDecommissionedException("No se puede editar un dispositivo dado de baja");
     }
@@ -158,9 +168,26 @@ public class DeviceService {
     return save(entity);
   }
 
-  private Device save(com.redsegura.assetinventory.domain.Device entity) {
+  /** RN8: el If-Match debe coincidir con la versión actual del recurso. */
+  private static void checkVersion(
+      com.redsegura.assetinventory.domain.Device entity, long expectedVersion) {
+    if (entity.getVersion() == null || entity.getVersion() != expectedVersion) {
+      throw new PreconditionFailedException(
+          "El If-Match no coincide con la versión actual del recurso");
+    }
+  }
+
+  private VersionedDevice save(com.redsegura.assetinventory.domain.Device entity) {
+    var saved = saveEntity(entity);
+    return new VersionedDevice(mapper.toResponse(saved), saved.getVersion());
+  }
+
+  private com.redsegura.assetinventory.domain.Device saveEntity(
+      com.redsegura.assetinventory.domain.Device entity) {
     try {
-      return mapper.toResponse(repository.saveAndFlush(entity));
+      return repository.saveAndFlush(entity);
+    } catch (ObjectOptimisticLockingFailureException e) {
+      throw new PreconditionFailedException("Edición concurrente detectada");
     } catch (DataIntegrityViolationException e) {
       throw new DuplicateDeviceException("serialNumber, hostname o mgmtIp ya registrado");
     }

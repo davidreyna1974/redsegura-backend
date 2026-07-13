@@ -10,6 +10,7 @@ import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
 import com.redsegura.assetinventory.generated.model.PageDevice;
 import com.redsegura.assetinventory.service.DeviceService;
+import com.redsegura.assetinventory.service.VersionedDevice;
 import java.net.URI;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -41,13 +42,16 @@ public class DeviceController implements DevicesApi {
   @Override
   public ResponseEntity<Device> createDevice(
       DeviceCreateRequest deviceCreateRequest, String idempotencyKey) {
-    Device created = service.create(deviceCreateRequest);
-    return ResponseEntity.created(URI.create("/api/v1/devices/" + created.getId())).body(created);
+    VersionedDevice vd = service.create(deviceCreateRequest);
+    return ResponseEntity.created(URI.create("/api/v1/devices/" + vd.body().getId()))
+        .eTag(etag(vd.version()))
+        .body(vd.body());
   }
 
   @Override
   public ResponseEntity<Device> getDevice(UUID deviceId) {
-    return ResponseEntity.ok(service.findById(deviceId));
+    VersionedDevice vd = service.findById(deviceId);
+    return ResponseEntity.ok().eTag(etag(vd.version())).body(vd.body());
   }
 
   @Override
@@ -82,19 +86,40 @@ public class DeviceController implements DevicesApi {
   @Override
   public ResponseEntity<Device> replaceDevice(
       UUID deviceId, String ifMatch, DeviceUpdateFull deviceUpdateFull) {
-    return ResponseEntity.ok(service.replace(deviceId, deviceUpdateFull));
+    VersionedDevice vd = service.replace(deviceId, parseIfMatch(ifMatch), deviceUpdateFull);
+    return ResponseEntity.ok().eTag(etag(vd.version())).body(vd.body());
   }
 
   @Override
   public ResponseEntity<Device> updateDevice(
       UUID deviceId, String ifMatch, DeviceUpdateRequest deviceUpdateRequest) {
-    return ResponseEntity.ok(service.update(deviceId, deviceUpdateRequest));
+    VersionedDevice vd = service.update(deviceId, parseIfMatch(ifMatch), deviceUpdateRequest);
+    return ResponseEntity.ok().eTag(etag(vd.version())).body(vd.body());
   }
 
   @Override
   public ResponseEntity<Void> decommissionDevice(UUID deviceId, String ifMatch) {
-    service.decommission(deviceId);
+    service.decommission(deviceId, parseIfMatch(ifMatch));
     return ResponseEntity.noContent().build();
+  }
+
+  private static String etag(long version) {
+    return "\"" + version + "\"";
+  }
+
+  /**
+   * Extrae la versión numérica del valor If-Match (ETag). Formato inválido -> -1 (no coincidirá).
+   */
+  private static long parseIfMatch(String ifMatch) {
+    if (ifMatch == null) {
+      return -1L;
+    }
+    String v = ifMatch.trim().replaceFirst("^W/", "").replace("\"", "").trim();
+    try {
+      return Long.parseLong(v);
+    } catch (NumberFormatException e) {
+      return -1L;
+    }
   }
 
   private static Pageable toPageable(Integer page, Integer size, String sort) {

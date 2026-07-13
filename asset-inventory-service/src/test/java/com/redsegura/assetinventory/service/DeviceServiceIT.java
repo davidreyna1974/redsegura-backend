@@ -7,8 +7,8 @@ import com.redsegura.assetinventory.AbstractIntegrationTest;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
+import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import com.redsegura.assetinventory.generated.model.Criticality;
-import com.redsegura.assetinventory.generated.model.Device;
 import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
 import com.redsegura.assetinventory.generated.model.DeviceStatus;
 import com.redsegura.assetinventory.generated.model.DeviceType;
@@ -22,7 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 
 /**
- * Reglas de negocio del inventario (RN1..RN7) contra PostgreSQL real, con los DTOs del contrato.
+ * Reglas de negocio del inventario (RN1..RN8) contra PostgreSQL real, con los DTOs del contrato.
  */
 class DeviceServiceIT extends AbstractIntegrationTest {
 
@@ -44,14 +44,15 @@ class DeviceServiceIT extends AbstractIntegrationTest {
 
   @Test
   void create_thenFindById() {
-    Device created = service.create(req("S1", "SW1", "10.0.0.1"));
+    VersionedDevice created = service.create(req("S1", "SW1", "10.0.0.1"));
 
-    assertThat(created.getId()).isNotNull();
-    Device found = service.findById(created.getId());
-    assertThat(found.getSerialNumber()).isEqualTo("S1");
-    assertThat(found.getStatus()).isEqualTo(DeviceStatus.ACTIVO);
-    assertThat(found.getCreatedBy()).isEqualTo("system");
-    assertThat(found.getLocation().getSite()).isEqualTo("MX-DC1");
+    assertThat(created.body().getId()).isNotNull();
+    assertThat(created.version()).isZero();
+    VersionedDevice found = service.findById(created.body().getId());
+    assertThat(found.body().getSerialNumber()).isEqualTo("S1");
+    assertThat(found.body().getStatus()).isEqualTo(DeviceStatus.ACTIVO);
+    assertThat(found.body().getCreatedBy()).isEqualTo("system");
+    assertThat(found.body().getLocation().getSite()).isEqualTo("MX-DC1");
   }
 
   /** RN1: serialNumber duplicado -> 409. */
@@ -70,42 +71,57 @@ class DeviceServiceIT extends AbstractIntegrationTest {
   }
 
   @Test
-  void update_appliesOnlyProvidedFields() {
-    Device c = service.create(req("S1", "SW1", "10.0.0.1"));
+  void update_appliesOnlyProvidedFields_andBumpsVersion() {
+    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"));
 
-    Device updated =
+    VersionedDevice updated =
         service.update(
-            c.getId(),
+            c.body().getId(),
+            c.version(),
             new DeviceUpdateRequest()
                 .hostname("SW1-NEW")
                 .deviceType(DeviceType.ROUTER)
                 .criticality(Criticality.MEDIA));
 
-    assertThat(updated.getHostname()).isEqualTo("SW1-NEW");
-    assertThat(updated.getDeviceType()).isEqualTo(DeviceType.ROUTER);
-    assertThat(updated.getCriticality()).isEqualTo(Criticality.MEDIA);
-    assertThat(updated.getMgmtIp()).isEqualTo("10.0.0.1"); // no cambia
-    assertThat(updated.getSerialNumber()).isEqualTo("S1"); // inmutable (RN2)
+    assertThat(updated.body().getHostname()).isEqualTo("SW1-NEW");
+    assertThat(updated.body().getDeviceType()).isEqualTo(DeviceType.ROUTER);
+    assertThat(updated.body().getMgmtIp()).isEqualTo("10.0.0.1"); // no cambia
+    assertThat(updated.body().getSerialNumber()).isEqualTo("S1"); // inmutable (RN2)
+    assertThat(updated.version()).isEqualTo(1L); // version incrementada
   }
 
-  /** RN6: no se puede editar un dispositivo dado de baja. */
+  /** RN8: If-Match desactualizado -> 412. */
+  @Test
+  void update_wrongVersion_throwsPreconditionFailed() {
+    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"));
+
+    assertThatThrownBy(
+            () -> service.update(c.body().getId(), 999L, new DeviceUpdateRequest().hostname("X")))
+        .isInstanceOf(PreconditionFailedException.class);
+  }
+
+  /** RN6: no se puede editar un dispositivo dado de baja (con If-Match correcto). */
   @Test
   void update_decommissioned_throwsConflict() {
-    Device c = service.create(req("S1", "SW1", "10.0.0.1"));
-    service.decommission(c.getId());
+    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"));
+    service.decommission(c.body().getId(), c.version());
+    long currentVersion = service.findById(c.body().getId()).version();
 
-    assertThatThrownBy(() -> service.update(c.getId(), new DeviceUpdateRequest().hostname("X")))
+    assertThatThrownBy(
+            () ->
+                service.update(
+                    c.body().getId(), currentVersion, new DeviceUpdateRequest().hostname("X")))
         .isInstanceOf(DeviceDecommissionedException.class);
   }
 
   /** RN6/FLOW-01: la baja es lógica y se excluye de los listados salvo filtro estado=BAJA. */
   @Test
   void decommission_isSoftAndExcludedFromDefaultSearch() {
-    Device c = service.create(req("S1", "SW1", "10.0.0.1"));
+    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"));
 
-    service.decommission(c.getId());
+    service.decommission(c.body().getId(), c.version());
 
-    assertThat(service.findById(c.getId()).getStatus()).isEqualTo(DeviceStatus.BAJA);
+    assertThat(service.findById(c.body().getId()).body().getStatus()).isEqualTo(DeviceStatus.BAJA);
     assertThat(
             service
                 .search(null, null, null, null, null, null, null, null, PageRequest.of(0, 20))
