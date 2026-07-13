@@ -90,11 +90,18 @@ baja lógica excluida del listado, filtro por hostname) y `DeviceControllerIT` (
 redacción de `mgmtIp` (RN10), publicación de eventos vía outbox (RN11), bulk import, y Pact de
 eventos `asset.*`.
 
-> **Nota de transparencia (ADR-05):** en este hito los DTOs y el controlador se escribieron **a
-> mano** ajustados al contrato (`openapi.yaml`, gobernado por Spectral), en vez de generarlos con
-> `openapi-generator`. El contrato sigue siendo la fuente de verdad; cablear la generación estricta
-> queda como refinamiento pendiente (o se ajusta ADR-05 para aceptar código a mano verificado por
-> gobernanza).
+**Hito 3b — contract-first estricto (ADR-05):** se cableó **openapi-generator**. El contrato genera
+las interfaces de API (`DevicesApi`) y los DTOs; el `DeviceController` **implementa** la interfaz
+generada, de modo que el código cumple el contrato **por construcción** (si el contrato cambia, no
+compila). Se eliminaron los DTOs escritos a mano. Verificación: `mvn verify` → 26 tests, cobertura
+LINE 86.7% (excluyendo generado), 0 Checkstyle.
+
+> **Retos de entorno resueltos (documentados como lección):** (1) la ruta del proyecto tiene
+> **espacios** y swagger-parser la trata como URI → se copia el spec a una ruta temporal sin
+> espacios antes de generar; (2) openapi-generator **descarta** los parámetros a nivel-path cuando
+> la operación define sus propios `parameters` → se declaró `deviceId` en cada operación;
+> (3) la validación de formato de IP (RN5) se movió **al contrato** (`pattern`), para que la
+> genere el DTO; (4) JaCoCo/Checkstyle excluyen el código generado.
 
 > Nota de entorno: docker-java usa por defecto una API de Docker que Docker Desktop reciente
 > rechaza; se fija `-Dapi.version` en Surefire (POM padre). Testcontainers subido a 1.20.4.

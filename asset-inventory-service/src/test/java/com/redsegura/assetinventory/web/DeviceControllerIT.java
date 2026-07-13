@@ -146,6 +146,10 @@ class DeviceControllerIT extends AbstractIntegrationTest {
             .getContentAsString();
     String id = objectMapper.readTree(response).get("id").asText();
 
-    mockMvc.perform(delete("/api/v1/devices/{id}", id)).andExpect(status().isNoContent());
+    // If-Match es obligatorio en el contrato (concurrencia, ADR-09); su lógica se implementa en
+    // el hito transversal. Se envía un valor cualquiera para satisfacer la cabecera requerida.
+    mockMvc
+        .perform(delete("/api/v1/devices/{id}", id).header("If-Match", "\"0\""))
+        .andExpect(status().isNoContent());
   }
 }

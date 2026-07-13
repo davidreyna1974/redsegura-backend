@@ -1,29 +1,29 @@
 package com.redsegura.assetinventory.service;
 
 import com.redsegura.assetinventory.domain.Criticality;
-import com.redsegura.assetinventory.domain.Device;
 import com.redsegura.assetinventory.domain.DeviceStatus;
 import com.redsegura.assetinventory.domain.DeviceType;
 import com.redsegura.assetinventory.domain.Location;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
+import com.redsegura.assetinventory.generated.model.Device;
+import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
+import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
+import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
 import com.redsegura.assetinventory.mapper.DeviceMapper;
 import com.redsegura.assetinventory.repository.DeviceRepository;
-import com.redsegura.assetinventory.web.dto.DeviceCreateRequest;
-import com.redsegura.assetinventory.web.dto.DeviceResponse;
-import com.redsegura.assetinventory.web.dto.DeviceUpdateRequest;
-import com.redsegura.assetinventory.web.dto.LocationDto;
-import com.redsegura.assetinventory.web.dto.PageResponse;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Lógica de negocio del inventario (RN1..RN7). Inyección por constructor; transacciones explícitas.
+ * Lógica de negocio del inventario (RN1..RN7). Recibe/devuelve los DTOs generados del contrato
+ * (ADR-05) y opera sobre la entidad de dominio; los enums generados se puentean por nombre.
  */
 @Service
 public class DeviceService {
@@ -38,24 +38,28 @@ public class DeviceService {
 
   /** Alta de dispositivo. La unicidad (RN1) la garantiza el índice único, no un chequeo previo. */
   @Transactional
-  public DeviceResponse create(DeviceCreateRequest req) {
-    Device device =
-        new Device(
-            req.serialNumber(), req.hostname(), req.mgmtIp(), req.deviceType(), req.criticality());
-    device.setAssetTag(req.assetTag());
-    device.setVendor(req.vendor());
-    device.setModel(req.model());
-    device.setLocation(toLocation(req.location()));
-    return save(device);
+  public Device create(DeviceCreateRequest req) {
+    var entity =
+        new com.redsegura.assetinventory.domain.Device(
+            req.getSerialNumber(),
+            req.getHostname(),
+            req.getMgmtIp(),
+            toDomainType(req.getDeviceType()),
+            toDomainCriticality(req.getCriticality()));
+    entity.setAssetTag(req.getAssetTag());
+    entity.setVendor(req.getVendor());
+    entity.setModel(req.getModel());
+    entity.setLocation(toDomainLocation(req.getLocation()));
+    return save(entity);
   }
 
   @Transactional(readOnly = true)
-  public DeviceResponse findById(UUID id) {
+  public Device findById(UUID id) {
     return mapper.toResponse(getOrThrow(id));
   }
 
   @Transactional(readOnly = true)
-  public PageResponse<DeviceResponse> search(
+  public Page<Device> search(
       String hostname,
       String mgmtIp,
       String serialNumber,
@@ -65,73 +69,121 @@ public class DeviceService {
       Criticality criticality,
       DeviceStatus status,
       Pageable pageable) {
-    Specification<Device> spec =
+    Specification<com.redsegura.assetinventory.domain.Device> spec =
         DeviceSpecifications.withFilters(
             hostname, mgmtIp, serialNumber, deviceType, site, rack, criticality, status);
-    return PageResponse.from(repository.findAll(spec, pageable).map(mapper::toResponse));
+    return repository.findAll(spec, pageable).map(mapper::toResponse);
   }
 
-  /**
-   * Edición (parcial/merge). {@code serialNumber} y {@code status} no se editan por API (RN2/RN7,
-   * no están en el DTO). Un dispositivo dado de baja no es editable (RN6).
-   */
+  /** Reemplazo completo (PUT). */
   @Transactional
-  public DeviceResponse update(UUID id, DeviceUpdateRequest req) {
-    Device device = getOrThrow(id);
-    if (device.getStatus() == DeviceStatus.BAJA) {
-      throw new DeviceDecommissionedException("No se puede editar un dispositivo dado de baja");
-    }
-    if (req.hostname() != null) {
-      device.setHostname(req.hostname());
-    }
-    if (req.mgmtIp() != null) {
-      device.setMgmtIp(req.mgmtIp());
-    }
-    if (req.deviceType() != null) {
-      device.setDeviceType(req.deviceType());
-    }
-    if (req.vendor() != null) {
-      device.setVendor(req.vendor());
-    }
-    if (req.model() != null) {
-      device.setModel(req.model());
-    }
-    if (req.assetTag() != null) {
-      device.setAssetTag(req.assetTag());
-    }
-    if (req.location() != null) {
-      device.setLocation(toLocation(req.location()));
-    }
-    if (req.criticality() != null) {
-      device.setCriticality(req.criticality());
-    }
-    return save(device);
+  public Device replace(UUID id, DeviceUpdateFull req) {
+    return applyUpdate(
+        id,
+        req.getHostname(),
+        req.getMgmtIp(),
+        req.getDeviceType(),
+        req.getVendor(),
+        req.getModel(),
+        req.getAssetTag(),
+        req.getLocation(),
+        req.getCriticality());
+  }
+
+  /** Edición parcial (PATCH, JSON Merge Patch). */
+  @Transactional
+  public Device update(UUID id, DeviceUpdateRequest req) {
+    return applyUpdate(
+        id,
+        req.getHostname(),
+        req.getMgmtIp(),
+        req.getDeviceType(),
+        req.getVendor(),
+        req.getModel(),
+        req.getAssetTag(),
+        req.getLocation(),
+        req.getCriticality());
   }
 
   /** Baja lógica (soft delete, RN6). */
   @Transactional
   public void decommission(UUID id) {
-    Device device = getOrThrow(id);
-    device.decommission();
-    repository.save(device);
+    var entity = getOrThrow(id);
+    entity.decommission();
+    repository.save(entity);
   }
 
-  private DeviceResponse save(Device device) {
+  /**
+   * Aplica los campos no nulos a la entidad. {@code serialNumber} y {@code status} no se editan por
+   * API (RN2/RN7). Un dispositivo dado de baja no es editable (RN6).
+   */
+  private Device applyUpdate(
+      UUID id,
+      String hostname,
+      String mgmtIp,
+      com.redsegura.assetinventory.generated.model.DeviceType deviceType,
+      String vendor,
+      String model,
+      String assetTag,
+      com.redsegura.assetinventory.generated.model.Location location,
+      com.redsegura.assetinventory.generated.model.Criticality criticality) {
+    var entity = getOrThrow(id);
+    if (entity.getStatus() == DeviceStatus.BAJA) {
+      throw new DeviceDecommissionedException("No se puede editar un dispositivo dado de baja");
+    }
+    if (hostname != null) {
+      entity.setHostname(hostname);
+    }
+    if (mgmtIp != null) {
+      entity.setMgmtIp(mgmtIp);
+    }
+    if (deviceType != null) {
+      entity.setDeviceType(toDomainType(deviceType));
+    }
+    if (vendor != null) {
+      entity.setVendor(vendor);
+    }
+    if (model != null) {
+      entity.setModel(model);
+    }
+    if (assetTag != null) {
+      entity.setAssetTag(assetTag);
+    }
+    if (location != null) {
+      entity.setLocation(toDomainLocation(location));
+    }
+    if (criticality != null) {
+      entity.setCriticality(toDomainCriticality(criticality));
+    }
+    return save(entity);
+  }
+
+  private Device save(com.redsegura.assetinventory.domain.Device entity) {
     try {
-      return mapper.toResponse(repository.saveAndFlush(device));
+      return mapper.toResponse(repository.saveAndFlush(entity));
     } catch (DataIntegrityViolationException e) {
       throw new DuplicateDeviceException("serialNumber, hostname o mgmtIp ya registrado");
     }
   }
 
-  private Device getOrThrow(UUID id) {
+  private com.redsegura.assetinventory.domain.Device getOrThrow(UUID id) {
     return repository.findById(id).orElseThrow(() -> new DeviceNotFoundException(id));
   }
 
-  private static Location toLocation(LocationDto dto) {
-    if (dto == null) {
-      return null;
-    }
-    return new Location(dto.site(), dto.room(), dto.row(), dto.rack(), dto.rackUnit());
+  private static DeviceType toDomainType(
+      com.redsegura.assetinventory.generated.model.DeviceType t) {
+    return t == null ? null : DeviceType.valueOf(t.name());
+  }
+
+  private static Criticality toDomainCriticality(
+      com.redsegura.assetinventory.generated.model.Criticality c) {
+    return c == null ? null : Criticality.valueOf(c.name());
+  }
+
+  private static Location toDomainLocation(
+      com.redsegura.assetinventory.generated.model.Location l) {
+    return l == null
+        ? null
+        : new Location(l.getSite(), l.getRoom(), l.getRow(), l.getRack(), l.getRackUnit());
   }
 }

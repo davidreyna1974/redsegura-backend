@@ -4,24 +4,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.redsegura.assetinventory.AbstractIntegrationTest;
-import com.redsegura.assetinventory.domain.Criticality;
-import com.redsegura.assetinventory.domain.DeviceStatus;
-import com.redsegura.assetinventory.domain.DeviceType;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
+import com.redsegura.assetinventory.generated.model.Criticality;
+import com.redsegura.assetinventory.generated.model.Device;
+import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
+import com.redsegura.assetinventory.generated.model.DeviceStatus;
+import com.redsegura.assetinventory.generated.model.DeviceType;
+import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
+import com.redsegura.assetinventory.generated.model.Location;
 import com.redsegura.assetinventory.repository.DeviceRepository;
-import com.redsegura.assetinventory.web.dto.DeviceCreateRequest;
-import com.redsegura.assetinventory.web.dto.DeviceResponse;
-import com.redsegura.assetinventory.web.dto.DeviceUpdateRequest;
-import com.redsegura.assetinventory.web.dto.LocationDto;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 
-/** Reglas de negocio del inventario (RN1..RN7) contra PostgreSQL real. */
+/**
+ * Reglas de negocio del inventario (RN1..RN7) contra PostgreSQL real, con los DTOs del contrato.
+ */
 class DeviceServiceIT extends AbstractIntegrationTest {
 
   @Autowired private DeviceService service;
@@ -33,28 +35,23 @@ class DeviceServiceIT extends AbstractIntegrationTest {
   }
 
   private static DeviceCreateRequest req(String serial, String hostname, String ip) {
-    return new DeviceCreateRequest(
-        serial,
-        "A-1",
-        hostname,
-        ip,
-        DeviceType.SWITCH,
-        "Cisco",
-        "C9300",
-        new LocationDto("MX-DC1", "Sala 2", "B", "B07", 12),
-        Criticality.ALTA);
+    return new DeviceCreateRequest(serial, hostname, ip, DeviceType.SWITCH, Criticality.ALTA)
+        .assetTag("A-1")
+        .vendor("Cisco")
+        .model("C9300")
+        .location(new Location().site("MX-DC1").room("Sala 2").row("B").rack("B07").rackUnit(12));
   }
 
   @Test
   void create_thenFindById() {
-    DeviceResponse created = service.create(req("S1", "SW1", "10.0.0.1"));
+    Device created = service.create(req("S1", "SW1", "10.0.0.1"));
 
-    assertThat(created.id()).isNotNull();
-    DeviceResponse found = service.findById(created.id());
-    assertThat(found.serialNumber()).isEqualTo("S1");
-    assertThat(found.status()).isEqualTo(DeviceStatus.ACTIVO);
-    assertThat(found.createdBy()).isEqualTo("system");
-    assertThat(found.location().site()).isEqualTo("MX-DC1");
+    assertThat(created.getId()).isNotNull();
+    Device found = service.findById(created.getId());
+    assertThat(found.getSerialNumber()).isEqualTo("S1");
+    assertThat(found.getStatus()).isEqualTo(DeviceStatus.ACTIVO);
+    assertThat(found.getCreatedBy()).isEqualTo("system");
+    assertThat(found.getLocation().getSite()).isEqualTo("MX-DC1");
   }
 
   /** RN1: serialNumber duplicado -> 409. */
@@ -74,46 +71,45 @@ class DeviceServiceIT extends AbstractIntegrationTest {
 
   @Test
   void update_appliesOnlyProvidedFields() {
-    DeviceResponse c = service.create(req("S1", "SW1", "10.0.0.1"));
+    Device c = service.create(req("S1", "SW1", "10.0.0.1"));
 
-    DeviceResponse updated =
+    Device updated =
         service.update(
-            c.id(),
-            new DeviceUpdateRequest(
-                null, "SW1-NEW", null, DeviceType.ROUTER, null, null, null, Criticality.MEDIA));
+            c.getId(),
+            new DeviceUpdateRequest()
+                .hostname("SW1-NEW")
+                .deviceType(DeviceType.ROUTER)
+                .criticality(Criticality.MEDIA));
 
-    assertThat(updated.hostname()).isEqualTo("SW1-NEW");
-    assertThat(updated.deviceType()).isEqualTo(DeviceType.ROUTER);
-    assertThat(updated.criticality()).isEqualTo(Criticality.MEDIA);
-    assertThat(updated.mgmtIp()).isEqualTo("10.0.0.1"); // no cambia
-    assertThat(updated.serialNumber()).isEqualTo("S1"); // inmutable (RN2)
+    assertThat(updated.getHostname()).isEqualTo("SW1-NEW");
+    assertThat(updated.getDeviceType()).isEqualTo(DeviceType.ROUTER);
+    assertThat(updated.getCriticality()).isEqualTo(Criticality.MEDIA);
+    assertThat(updated.getMgmtIp()).isEqualTo("10.0.0.1"); // no cambia
+    assertThat(updated.getSerialNumber()).isEqualTo("S1"); // inmutable (RN2)
   }
 
   /** RN6: no se puede editar un dispositivo dado de baja. */
   @Test
   void update_decommissioned_throwsConflict() {
-    DeviceResponse c = service.create(req("S1", "SW1", "10.0.0.1"));
-    service.decommission(c.id());
+    Device c = service.create(req("S1", "SW1", "10.0.0.1"));
+    service.decommission(c.getId());
 
-    assertThatThrownBy(
-            () ->
-                service.update(
-                    c.id(), new DeviceUpdateRequest(null, "X", null, null, null, null, null, null)))
+    assertThatThrownBy(() -> service.update(c.getId(), new DeviceUpdateRequest().hostname("X")))
         .isInstanceOf(DeviceDecommissionedException.class);
   }
 
   /** RN6/FLOW-01: la baja es lógica y se excluye de los listados salvo filtro estado=BAJA. */
   @Test
   void decommission_isSoftAndExcludedFromDefaultSearch() {
-    DeviceResponse c = service.create(req("S1", "SW1", "10.0.0.1"));
+    Device c = service.create(req("S1", "SW1", "10.0.0.1"));
 
-    service.decommission(c.id());
+    service.decommission(c.getId());
 
-    assertThat(service.findById(c.id()).status()).isEqualTo(DeviceStatus.BAJA);
+    assertThat(service.findById(c.getId()).getStatus()).isEqualTo(DeviceStatus.BAJA);
     assertThat(
             service
                 .search(null, null, null, null, null, null, null, null, PageRequest.of(0, 20))
-                .content())
+                .getContent())
         .isEmpty();
     assertThat(
             service
@@ -125,9 +121,9 @@ class DeviceServiceIT extends AbstractIntegrationTest {
                     null,
                     null,
                     null,
-                    DeviceStatus.BAJA,
+                    com.redsegura.assetinventory.domain.DeviceStatus.BAJA,
                     PageRequest.of(0, 20))
-                .content())
+                .getContent())
         .hasSize(1);
   }
 
@@ -139,8 +135,8 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     var page =
         service.search("core", null, null, null, null, null, null, null, PageRequest.of(0, 20));
 
-    assertThat(page.content()).hasSize(1);
-    assertThat(page.content().get(0).hostname()).isEqualTo("SW-CORE");
-    assertThat(page.totalElements()).isEqualTo(1);
+    assertThat(page.getContent()).hasSize(1);
+    assertThat(page.getContent().get(0).getHostname()).isEqualTo("SW-CORE");
+    assertThat(page.getTotalElements()).isEqualTo(1);
   }
 }

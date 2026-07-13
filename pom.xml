@@ -40,6 +40,9 @@
         <!-- Mapeo entidad <-> DTO en tiempo de compilacion (ADR-06) -->
         <mapstruct.version>1.6.3</mapstruct.version>
 
+        <!-- Contract-first: genera interfaces de API + DTOs desde el openapi.yaml (ADR-05) -->
+        <openapi-generator.version>7.9.0</openapi-generator.version>
+
         <!-- Testcontainers: se sube sobre el gestionado por Spring Boot para que docker-java
              negocie una API compatible con Docker Desktop reciente (min API 1.44). -->
         <testcontainers.version>1.20.4</testcontainers.version>
@@ -158,6 +161,13 @@
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
                     <version>${jacoco.version}</version>
+                    <configuration>
+                        <!-- El codigo generado (openapi-generator, MapStruct) no cuenta en cobertura. -->
+                        <excludes>
+                            <exclude>**/generated/**</exclude>
+                            <exclude>**/*MapperImpl.*</exclude>
+                        </excludes>
+                    </configuration>
                     <executions>
                         <execution>
                             <id>prepare-agent</id>
