@@ -15,6 +15,7 @@ class HealthControllerTest {
 
   @Autowired private MockMvc mockMvc;
 
+  /** HLTH-01: el liveness probe responde 200 {"status":"UP"} sin autenticación. */
   @Test
   void liveness_returnsUp() throws Exception {
     mockMvc
@@ -23,6 +24,7 @@ class HealthControllerTest {
         .andExpect(jsonPath("$.status").value("UP"));
   }
 
+  /** HLTH-02: el readiness probe responde 200 {"status":"UP"} sin autenticación. */
   @Test
   void readiness_returnsUp() throws Exception {
     mockMvc
