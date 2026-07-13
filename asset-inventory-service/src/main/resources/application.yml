@@ -2,6 +2,23 @@ spring:
   application:
     name: asset-inventory-service
 
+  # Configuración por entorno (12-factor). En tests, Testcontainers la sobrescribe.
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/asset_inventory}
+    username: ${DB_USER:redsegura}
+    password: ${DB_PASSWORD:changeme}
+
+  jpa:
+    hibernate:
+      # El esquema lo gestiona Flyway; Hibernate solo valida que el mapeo coincida.
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+  flyway:
+    enabled: true
+
 server:
   port: 8081
 

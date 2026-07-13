@@ -1,11 +1,9 @@
 package com.redsegura.assetinventory;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-/** Smoke test: el contexto de Spring arranca correctamente. */
-@SpringBootTest
-class AssetInventoryApplicationTests {
+/** Smoke test: el contexto arranca con PostgreSQL real (Testcontainers) y Flyway aplicado. */
+class AssetInventoryApplicationTests extends AbstractIntegrationTest {
 
   @Test
   void contextLoads() {}

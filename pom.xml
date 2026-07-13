@@ -40,6 +40,14 @@
         <!-- Mapeo entidad <-> DTO en tiempo de compilacion (ADR-06) -->
         <mapstruct.version>1.6.3</mapstruct.version>
 
+        <!-- Testcontainers: se sube sobre el gestionado por Spring Boot para que docker-java
+             negocie una API compatible con Docker Desktop reciente (min API 1.44). -->
+        <testcontainers.version>1.20.4</testcontainers.version>
+
+        <!-- docker-java usa por defecto la API 1.32, que Docker Desktop reciente rechaza; se fija
+             como propiedad de sistema en los tests (Surefire). Docker 25+/CI soportan 1.44. -->
+        <docker.api.version>1.44</docker.api.version>
+
         <!-- Umbral de cobertura minima (gatekeeper: >= 70% statements) -->
         <jacoco.coverage.minimum>0.70</jacoco.coverage.minimum>
     </properties>
@@ -71,6 +79,24 @@
     <build>
         <pluginManagement>
             <plugins>
+                <!-- Tests: fija la version de API de Docker para docker-java/Testcontainers. -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <configuration>
+                        <systemPropertyVariables>
+                            <api.version>${docker.api.version}</api.version>
+                        </systemPropertyVariables>
+                        <!-- Los tests de integracion (*IT, Testcontainers) corren junto a los
+                             unitarios en la fase test, para que cuenten en la cobertura. -->
+                        <includes>
+                            <include>**/*Test.java</include>
+                            <include>**/*Tests.java</include>
+                            <include>**/*IT.java</include>
+                        </includes>
+                    </configuration>
+                </plugin>
+
                 <!-- Compilador: registra el annotation processor de MapStruct (ADR-06). -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -167,5 +193,15 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <!-- Plugins activos heredados por todos los servicios Java. JaCoCo se activa aquí
+             (su configuración/umbral viven en pluginManagement); Spotless/Checkstyle se
+             invocan como goals en el gatekeeper. -->
+        <plugins>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
 </project>

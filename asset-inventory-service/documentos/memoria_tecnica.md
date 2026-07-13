@@ -65,11 +65,22 @@ Patrón `controller → service → repository` (estándares §3.1):
 - Autorización validada **en el servicio** (no se asume filtrado del Gateway).
 
 ## 7. Ejecución de tests (evidencia verificable)
-**Pendiente (pre-código).** Al implementar se pegará aquí la salida real:
-- Unit + integración: `mvn -pl asset-inventory-service test` → `<X tests, 0 failures>`.
-- Cobertura: `mvn -pl asset-inventory-service jacoco:report` → `<L/S/B %>` (mínimo 70 %).
-- Contratos: gobernanza Spectral en verde; Pact de eventos `asset.*` con consumidores.
-- Integración con **Testcontainers** (PostgreSQL + RabbitMQ reales).
+
+**Hito 2 — persistencia (2026-07-13):** `mvn -pl asset-inventory-service verify` → BUILD SUCCESS.
+```
+Tests run: 12, Failures: 0, Errors: 0, Skipped: 0
+Cobertura JaCoCo: LINE 93.5% · INSTRUCTION 95.5% · BRANCH 71.4%  (umbral 70% cumplido)
+Checkstyle: 0 violaciones · Spotless: OK
+```
+Suites: `DeviceTest` (dominio, sin BD), `DeviceRepositoryIT` (integración con **PostgreSQL real**
+vía Testcontainers + Flyway: auditoría, versión, unicidad de serial/hostname/mgmtIp),
+`HealthControllerTest`, `AssetInventoryApplicationTests` (arranque de contexto).
+
+**Pendiente (hitos siguientes):** tests de servicio (RN1..RN11), web (controller), seguridad por
+rol, ETag/idempotencia/redacción, y Pact de eventos `asset.*`.
+
+> Nota de entorno: docker-java usa por defecto una API de Docker que Docker Desktop reciente
+> rechaza; se fija `-Dapi.version` en Surefire (POM padre). Testcontainers subido a 1.20.4.
 
 ## 8. Bugs y retos durante el desarrollo
 | ID | Síntoma | Causa raíz | Fix | ¿Lección? |
