@@ -17,4 +17,6 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
   `notification-service`. Incluyen modelo de error uniforme, paginación, filtros, `/health`,
   RBAC por operación (`x-roles`) y columnas de auditoría (ADR-07).
 - Documentación del repositorio: README, SECURITY, plantilla de PR, Dependabot, esqueleto de
-  CI e índice de documentación.
+  CI (workflows en `workflow_dispatch` hasta scaffolding) e índice de documentación.
+- Repositorio publicado en GitHub (`redsegura-backend`, público) con branch protection.
+- `asset-inventory-service`: propuesta de módulo (documentación pre-código).
