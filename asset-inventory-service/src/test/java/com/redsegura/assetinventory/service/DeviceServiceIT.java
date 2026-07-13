@@ -44,7 +44,7 @@ class DeviceServiceIT extends AbstractIntegrationTest {
 
   @Test
   void create_thenFindById() {
-    VersionedDevice created = service.create(req("S1", "SW1", "10.0.0.1"));
+    VersionedDevice created = service.create(req("S1", "SW1", "10.0.0.1"), null);
 
     assertThat(created.body().getId()).isNotNull();
     assertThat(created.version()).isZero();
@@ -58,9 +58,9 @@ class DeviceServiceIT extends AbstractIntegrationTest {
   /** RN1: serialNumber duplicado -> 409. */
   @Test
   void create_duplicateSerial_throwsDuplicate() {
-    service.create(req("DUP", "SW1", "10.0.0.1"));
+    service.create(req("DUP", "SW1", "10.0.0.1"), null);
 
-    assertThatThrownBy(() -> service.create(req("DUP", "SW2", "10.0.0.2")))
+    assertThatThrownBy(() -> service.create(req("DUP", "SW2", "10.0.0.2"), null))
         .isInstanceOf(DuplicateDeviceException.class);
   }
 
@@ -72,7 +72,7 @@ class DeviceServiceIT extends AbstractIntegrationTest {
 
   @Test
   void update_appliesOnlyProvidedFields_andBumpsVersion() {
-    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"));
+    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"), null);
 
     VersionedDevice updated =
         service.update(
@@ -93,7 +93,7 @@ class DeviceServiceIT extends AbstractIntegrationTest {
   /** RN8: If-Match desactualizado -> 412. */
   @Test
   void update_wrongVersion_throwsPreconditionFailed() {
-    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"));
+    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"), null);
 
     assertThatThrownBy(
             () -> service.update(c.body().getId(), 999L, new DeviceUpdateRequest().hostname("X")))
@@ -103,7 +103,7 @@ class DeviceServiceIT extends AbstractIntegrationTest {
   /** RN6: no se puede editar un dispositivo dado de baja (con If-Match correcto). */
   @Test
   void update_decommissioned_throwsConflict() {
-    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"));
+    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"), null);
     service.decommission(c.body().getId(), c.version());
     long currentVersion = service.findById(c.body().getId()).version();
 
@@ -117,7 +117,7 @@ class DeviceServiceIT extends AbstractIntegrationTest {
   /** RN6/FLOW-01: la baja es lógica y se excluye de los listados salvo filtro estado=BAJA. */
   @Test
   void decommission_isSoftAndExcludedFromDefaultSearch() {
-    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"));
+    VersionedDevice c = service.create(req("S1", "SW1", "10.0.0.1"), null);
 
     service.decommission(c.body().getId(), c.version());
 
@@ -145,8 +145,8 @@ class DeviceServiceIT extends AbstractIntegrationTest {
 
   @Test
   void search_filtersByHostnameCaseInsensitive() {
-    service.create(req("S1", "SW-CORE", "10.0.0.1"));
-    service.create(req("S2", "RT-EDGE", "10.0.0.2"));
+    service.create(req("S1", "SW-CORE", "10.0.0.1"), null);
+    service.create(req("S2", "RT-EDGE", "10.0.0.2"), null);
 
     var page =
         service.search("core", null, null, null, null, null, null, null, PageRequest.of(0, 20));
@@ -154,5 +154,18 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     assertThat(page.getContent()).hasSize(1);
     assertThat(page.getContent().get(0).getHostname()).isEqualTo("SW-CORE");
     assertThat(page.getTotalElements()).isEqualTo(1);
+  }
+
+  /** RN9: un POST con la misma Idempotency-Key devuelve el original y no duplica. */
+  @Test
+  void create_withSameIdempotencyKey_isReplayed() {
+    VersionedDevice first = service.create(req("S1", "SW1", "10.0.0.1"), "key-123");
+
+    // Reintento con la misma clave (incluso con otro cuerpo): devuelve el original.
+    VersionedDevice replay = service.create(req("S2", "SW2", "10.0.0.2"), "key-123");
+
+    assertThat(replay.body().getId()).isEqualTo(first.body().getId());
+    assertThat(replay.body().getSerialNumber()).isEqualTo("S1");
+    assertThat(repository.count()).isEqualTo(1);
   }
 }

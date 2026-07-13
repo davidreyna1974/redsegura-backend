@@ -198,6 +198,30 @@ class DeviceControllerIT extends AbstractIntegrationTest {
         .andExpect(status().isNoContent());
   }
 
+  /** RN9: reintento con la misma Idempotency-Key -> replay 201 (no 409), mismo dispositivo. */
+  @Test
+  void create_withSameIdempotencyKey_isReplayed() throws Exception {
+    String b = body("S1", "SW1", "10.0.0.1");
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .header("Idempotency-Key", "k-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(b))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .header("Idempotency-Key", "k-1")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(b))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.serialNumber", is("S1")));
+  }
+
   private String createAndGetId() throws Exception {
     String response =
         mockMvc

@@ -42,7 +42,7 @@ public class DeviceController implements DevicesApi {
   @Override
   public ResponseEntity<Device> createDevice(
       DeviceCreateRequest deviceCreateRequest, String idempotencyKey) {
-    VersionedDevice vd = service.create(deviceCreateRequest);
+    VersionedDevice vd = service.create(deviceCreateRequest, idempotencyKey);
     return ResponseEntity.created(URI.create("/api/v1/devices/" + vd.body().getId()))
         .eTag(etag(vd.version()))
         .body(vd.body());
