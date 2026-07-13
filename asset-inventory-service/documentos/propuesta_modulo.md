@@ -16,11 +16,17 @@ cambio. Sirve al **Administrador** (gestión completa) y a **Operador/Auditor** 
 
 - **Incluye:**
   - CRUD de dispositivos: registrar (RF-01), consultar/editar/dar de baja con *soft delete* (RF-02).
-  - Listado con **búsqueda y filtrado** por hostname, IP de gestión, ubicación, criticidad,
+  - **Identidad estable** por `serialNumber` (inmutable) + `assetTag` opcional; `deviceType`
+    (ROUTER/SWITCH/FIREWALL/HOST/ACCESS_POINT/OTHER); **ubicación estructurada DCIM**
+    (`site/room/row/rack/rackUnit`).
+  - Listado con **búsqueda y filtrado** por hostname, IP, serial, tipo, site, rack, criticidad,
     fabricante, modelo y estado, paginado (RF-04).
+  - **Importación masiva** de dispositivos (bulk, asíncrona → job).
   - Exposición del inventario como API REST — fuente única de verdad (RF-03).
   - Publicación de eventos `asset.created` / `asset.updated` / `asset.decommissioned` (RF-05).
-  - Columnas de auditoría (ADR-07), `/health`, RBAC por endpoint.
+  - Estándares de industria: errores **RFC 7807** (ADR-08), **Idempotency-Key** + **ETag/If-Match**
+    (ADR-09), **probes** liveness/readiness (ADR-10), **redacción de `mgmtIp` por rol** + **log de
+    auditoría de seguridad** (ADR-11), columnas de auditoría (ADR-07), RBAC por endpoint.
 - **No incluye:** respaldos, auditoría de cumplimiento, escaneos, telemetría (otros servicios);
   gestión de usuarios/roles (la provee Keycloak); credenciales de acceso a los dispositivos
   (viven en `config-backup-service` / gestor de secretos, nunca aquí).
@@ -36,13 +42,16 @@ cambio. Sirve al **Administrador** (gestión completa) y a **Operador/Auditor** 
 
 | Unidad | Método / Ruta | Descripción | Rol(es) |
 |---|---|---|---|
-| Registrar dispositivo | `POST /api/v1/devices` | Alta de dispositivo | ADM |
+| Registrar dispositivo | `POST /api/v1/devices` | Alta (acepta `Idempotency-Key`) | ADM |
 | Listar / filtrar | `GET /api/v1/devices` | Búsqueda paginada con filtros | ADM, OPE, AUD |
-| Consultar detalle | `GET /api/v1/devices/{deviceId}` | Detalle de un dispositivo | ADM, OPE, AUD |
-| Editar (completo) | `PUT /api/v1/devices/{deviceId}` | Reemplazo completo | ADM |
-| Editar (parcial) | `PATCH /api/v1/devices/{deviceId}` | Edición parcial | ADM |
-| Dar de baja | `DELETE /api/v1/devices/{deviceId}` | *Soft delete* (status → BAJA) | ADM |
-| Salud | `GET /health` | Estado del servicio | público |
+| Consultar detalle | `GET /api/v1/devices/{deviceId}` | Detalle (devuelve `ETag`) | ADM, OPE, AUD |
+| Editar (completo) | `PUT /api/v1/devices/{deviceId}` | Reemplazo (exige `If-Match`) | ADM |
+| Editar (parcial) | `PATCH /api/v1/devices/{deviceId}` | JSON Merge Patch (exige `If-Match`) | ADM |
+| Dar de baja | `DELETE /api/v1/devices/{deviceId}` | *Soft delete* (exige `If-Match`) | ADM |
+| Importación masiva | `POST /api/v1/devices/bulk` | Alta por lotes, asíncrona → `jobId` | ADM |
+| Estado de importación | `GET /api/v1/devices/bulk/jobs/{jobId}` | Avance del job de importación | ADM, OPE, AUD |
+| Liveness | `GET /health/liveness` | ¿El proceso vive? | público |
+| Readiness | `GET /health/readiness` | ¿Listo para tráfico? (BD/broker) | público |
 
 ## 4. Contratos con dependencias (verificados)
 
@@ -63,40 +72,61 @@ Este servicio **no consume** endpoints de otros servicios. Sus contratos salient
 
 **DTOs relevantes** (nombres exactos del contrato):
 ```
-Device               { id, hostname, mgmtIp, vendor, model, location, criticality,
-                       status, createdAt, createdBy, updatedAt, updatedBy }
-DeviceCreateRequest  { hostname*, mgmtIp*, vendor, model, location, criticality* }   (* requerido)
-DeviceUpdateRequest  { hostname?, mgmtIp?, vendor?, model?, location?, criticality? } (parcial)
+Location             { site, room, row, rack, rackUnit }
+Device               { id, serialNumber, assetTag, hostname, mgmtIp, deviceType, vendor, model,
+                       location, criticality, status, createdAt, createdBy, updatedAt, updatedBy }
+DeviceCreateRequest  { serialNumber*, assetTag, hostname*, mgmtIp*, deviceType*, vendor, model,
+                       location, criticality* }                                    (* requerido)
+DeviceUpdateFull     { hostname*, mgmtIp*, deviceType*, criticality*, assetTag, vendor, model, location }
+DeviceUpdateRequest  { …campos opcionales… }  (JSON Merge Patch; serialNumber inmutable)
+BulkImportRequest    { devices: [DeviceCreateRequest] }   →   Job { jobId, status, total, succeeded, failed, results[] }
 PageDevice           { content[], page, size, totalElements, totalPages, first, last }
-ApiError             { code, message, traceId, timestamp }
-Enums: Criticality {ALTA, MEDIA, BAJA} · DeviceStatus {ACTIVO, BAJA}
+Problem              { type, title, status, detail, instance, traceId }   (RFC 7807)
+Enums: Criticality {ALTA,MEDIA,BAJA} · DeviceStatus {ACTIVO,BAJA} · DeviceType {ROUTER,SWITCH,FIREWALL,HOST,ACCESS_POINT,OTHER}
 ```
 
 ## 5. Reglas de negocio
 
-- **RN1 — Unicidad:** `hostname` y `mgmtIp` son únicos en el inventario (entre los activos). Alta
-  o edición que los duplique → **409** `DEVICE_ALREADY_EXISTS`.
-- **RN2 — Criticidad válida:** `criticality ∈ {ALTA, MEDIA, BAJA}` → si no, **422**.
-- **RN3 — Campos requeridos:** `hostname`, `mgmtIp`, `criticality` obligatorios en alta → **400/422**.
-- **RN4 — IP de gestión válida:** `mgmtIp` con formato IPv4/IPv6 válido → si no, **422**.
-- **RN5 — Soft delete:** dar de baja cambia `status` ACTIVO→BAJA (no borra físicamente). Un
-  dispositivo en BAJA **no** es editable → **409** `DEVICE_DECOMMISSIONED`. Los listados excluyen
-  los de baja salvo filtro explícito `estado=BAJA`.
-- **RN6 — `status` protegido:** de solo lectura vía API; solo cambia por alta/baja, nunca por
-  edición directa (campo protegido, estándares §11).
-- **RN7 — Publicación de evento:** tras **confirmar** el cambio en BD, se publica el evento
-  correspondiente vía *transactional outbox* (ADR-04): si la transacción no confirma, no hay evento.
+- **RN1 — Identidad y unicidad:** `serialNumber` es la **identidad estable** (inmutable) y es
+  **único**; `hostname` y `mgmtIp` también son únicos entre los activos, pero son *atributos*
+  (mutables). Duplicar cualquiera → **409** `DEVICE_ALREADY_EXISTS`.
+- **RN2 — `serialNumber` inmutable:** no editable vía `PUT`/`PATCH` → intento de cambiarlo se
+  ignora o **422**.
+- **RN3 — Campos requeridos:** `serialNumber`, `hostname`, `mgmtIp`, `deviceType`, `criticality`
+  obligatorios en alta → **400/422**.
+- **RN4 — Enumeraciones válidas:** `criticality ∈ {ALTA,MEDIA,BAJA}`, `deviceType` en su enum →
+  si no, **422**.
+- **RN5 — IP de gestión válida:** `mgmtIp` con formato IPv4/IPv6 válido → si no, **422**.
+- **RN6 — Soft delete:** dar de baja cambia `status` ACTIVO→BAJA (no borra). Un dispositivo en
+  BAJA **no** es editable → **409** `DEVICE_DECOMMISSIONED`. Los listados excluyen los de baja
+  salvo filtro `estado=BAJA`.
+- **RN7 — `status` protegido:** solo lectura vía API; cambia solo por alta/baja (estándares §11).
+- **RN8 — Concurrencia (ETag/If-Match, ADR-09):** `PUT`/`PATCH`/`DELETE` exigen `If-Match`; si no
+  coincide con el ETag actual → **412** (edición concurrente); si falta la cabecera → **428**.
+- **RN9 — Idempotencia (ADR-09):** un `POST` con `Idempotency-Key` ya visto devuelve la respuesta
+  original, sin crear duplicado.
+- **RN10 — Redacción de `mgmtIp` (ADR-11):** ADM y OPE ven la IP en claro; **Auditor** la ve
+  **enmascarada** (`10.0.0.***`), aplicado en el servidor; el acceso queda en el log de seguridad.
+- **RN11 — Publicación de evento:** tras **confirmar** el cambio en BD, se publica el evento vía
+  *transactional outbox* (ADR-04); si la transacción no confirma, no hay evento.
 
 ## 6. Seguridad / RBAC del módulo
 
-- **Escritura** (`POST`, `PUT`, `PATCH`, `DELETE /devices`) → **solo ADM**.
-- **Lectura** (`GET /devices`, `GET /devices/{id}`) → **ADM, OPE, AUD**.
-- **`/health`** → público (sin autenticación).
+- **Escritura** (`POST`, `PUT`, `PATCH`, `DELETE /devices`, `POST /devices/bulk`) → **solo ADM**.
+- **Lectura** (`GET /devices`, `GET /devices/{id}`, `GET …/bulk/jobs/{jobId}`) → **ADM, OPE, AUD**.
+- **`/health/liveness` y `/health/readiness`** → públicos (sin autenticación).
 - **Gate de seguridad (obligatorio):** probar el acceso a los endpoints de escritura con el rol
-  **menos** privilegiado (Auditor) → debe responder **403**; validado **en el servicio**, no
-  asumido del Gateway.
+  **menos** privilegiado (Auditor) → **403**; validado **en el servicio**, no asumido del Gateway.
+- **Redacción de campos por rol (server-side, ADR-11):**
+
+  | Campo | ADM | OPE | AUD |
+  |---|:--:|:--:|:--:|
+  | `mgmtIp` | claro | claro | **enmascarado** (`10.0.0.***`) |
+
+- **Log de auditoría de seguridad (ADR-11):** registrar accesos denegados (403), autenticaciones
+  fallidas (401) y mutaciones con su actor; y el acceso de Auditor al inventario (por `mgmtIp`).
 - **Campos sensibles:** este servicio **no** almacena credenciales de dispositivos ni secretos.
-  `createdBy`/`updatedBy` se exponen a roles autorizados. Nunca se expone la entidad JPA (solo DTOs).
+  Nunca se expone la entidad JPA (solo DTOs).
 
 ## 7. Riesgos y decisiones de diseño
 
@@ -108,7 +138,16 @@ Enums: Criticality {ALTA, MEDIA, BAJA} · DeviceStatus {ACTIVO, BAJA}
 - **Unicidad (RN1):** índice único en BD sobre `hostname` y `mgmtIp`; capturar
   `DataIntegrityViolationException` → **409** (no confiar solo en un chequeo previo, por carreras).
 - **Soft delete (RN5):** columna `status`; filtro por defecto que excluye `BAJA` en los listados.
-- **Concurrencia:** **bloqueo optimista** (`@Version`) en `Device` para ediciones concurrentes.
+- **Concurrencia:** **bloqueo optimista** (`@Version`) en `Device`, **expuesto por HTTP** con
+  `ETag`/`If-Match` (RFC 7232, ADR-09) → 412 en conflicto.
+- **Errores RFC 7807 (ADR-08):** `application/problem+json`; `PATCH` = JSON Merge Patch (RFC 7386).
+- **Idempotencia (ADR-09):** `Idempotency-Key` en `POST` (dedupe de reintentos) — tabla de claves.
+- **Probes (ADR-10):** `readiness` verifica PostgreSQL y RabbitMQ; `liveness` solo el proceso.
+- **Redacción + auditoría de seguridad (ADR-11):** `mgmtIp` enmascarada para Auditor; log `security`.
+- **Identidad estable:** `serialNumber` inmutable como identidad de negocio; índice único en BD.
+- **Ubicación estructurada (DCIM):** objeto embebido `{site,room,row,rack,rackUnit}` (sin recursos
+  Site/Rack aparte por ahora).
+- **Bulk import:** asíncrono (202 + `jobId`), con resultado por dispositivo.
 - **Consistencia evento↔BD:** *transactional outbox* (ADR-04).
 - **Blast radius GLOBAL:** al ser la fuente de verdad, cambiar su contrato de API o el esquema de
   sus eventos obliga a re-probar los consumidores (config-backup, compliance-audit) con Pact.

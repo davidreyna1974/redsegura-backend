@@ -3,9 +3,10 @@ info:
   title: asset-inventory-service API
   description: |
     Inventario único de activos de red de redSegura — fuente de verdad del sistema (RF-01..05).
-    Autorización por rol (RBAC) validada en el propio servicio; roles: ADM=Administrador,
-    OPE=Operador, AUD=Auditor. La columna de roles se documenta con la extensión `x-roles`.
-  version: 0.1.0
+    Aplica estándares de industria: errores RFC 7807 (ADR-08), Idempotency-Key + ETag/If-Match
+    (ADR-09), health probes diferenciados (ADR-10), redacción de campos por rol (ADR-11).
+    Roles: ADM=Administrador, OPE=Operador, AUD=Auditor (extensión `x-roles`).
+  version: 0.2.0
   contact:
     name: redSegura
 servers:
@@ -14,43 +15,48 @@ servers:
 
 tags:
   - name: devices
-    description: Gestión del inventario de dispositivos
+  - name: bulk
   - name: health
-    description: Estado del servicio
 
 security:
   - bearerAuth: []
 
 paths:
-  /health:
+  /health/liveness:
     get:
       tags: [health]
-      summary: Estado de salud del servicio
-      operationId: getHealth
+      summary: Liveness probe (¿el proceso vive?)
+      operationId: getLiveness
       security: []
       responses:
-        "200":
-          description: Servicio disponible
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Health" }
-        "503":
-          description: Servicio no disponible
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Health" }
+        "200": { description: Vivo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No disponible, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+  /health/readiness:
+    get:
+      tags: [health]
+      summary: Readiness probe (¿listo para tráfico? BD/broker OK)
+      operationId: getReadiness
+      security: []
+      responses:
+        "200": { description: Listo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
+        "503": { description: No listo, content: { application/json: { schema: { $ref: "#/components/schemas/Health" } } } }
 
   /devices:
     get:
       tags: [devices]
       summary: Listar y filtrar dispositivos
-      description: Filtros combinables (AND); búsqueda de texto insensible a mayúsculas/acentos.
+      description: |
+        Filtros combinables (AND); búsqueda insensible a mayúsculas/acentos.
+        `mgmtIp` se devuelve **enmascarada** para el rol Auditor (ADR-11).
       operationId: listDevices
       x-roles: [ADM, OPE, AUD]
       parameters:
-        - { name: hostname, in: query, schema: { type: string }, description: Coincidencia parcial }
+        - { name: hostname, in: query, schema: { type: string } }
         - { name: mgmtIp, in: query, schema: { type: string } }
-        - { name: ubicacion, in: query, schema: { type: string } }
+        - { name: serialNumber, in: query, schema: { type: string } }
+        - { name: deviceType, in: query, schema: { $ref: "#/components/schemas/DeviceType" } }
+        - { name: site, in: query, schema: { type: string } }
+        - { name: rack, in: query, schema: { type: string } }
         - { name: criticidad, in: query, schema: { $ref: "#/components/schemas/Criticality" } }
         - { name: fabricante, in: query, schema: { type: string } }
         - { name: modelo, in: query, schema: { type: string } }
@@ -61,9 +67,7 @@ paths:
       responses:
         "200":
           description: Página de dispositivos
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PageDevice" }
+          content: { application/json: { schema: { $ref: "#/components/schemas/PageDevice" } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
     post:
@@ -71,6 +75,8 @@ paths:
       summary: Registrar un dispositivo
       operationId: createDevice
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
       requestBody:
         required: true
         content:
@@ -80,10 +86,9 @@ paths:
         "201":
           description: Dispositivo creado
           headers:
-            Location: { schema: { type: string }, description: URI del recurso creado }
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Device" }
+            Location: { schema: { type: string } }
+            ETag: { schema: { type: string }, description: Versión del recurso (concurrencia) }
+          content: { application/json: { schema: { $ref: "#/components/schemas/Device" } } }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
@@ -101,9 +106,9 @@ paths:
       responses:
         "200":
           description: Dispositivo
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Device" }
+          headers:
+            ETag: { schema: { type: string }, description: Usar en If-Match para editar/borrar }
+          content: { application/json: { schema: { $ref: "#/components/schemas/Device" } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -112,167 +117,276 @@ paths:
       summary: Reemplazar un dispositivo (edición completa)
       operationId: replaceDevice
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/DeviceCreateRequest" }
+            schema: { $ref: "#/components/schemas/DeviceUpdateFull" }
       responses:
         "200":
           description: Dispositivo actualizado
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Device" }
+          headers: { ETag: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/Device" } } }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
     patch:
       tags: [devices]
-      summary: Editar parcialmente un dispositivo
+      summary: Editar parcialmente un dispositivo (JSON Merge Patch, RFC 7386)
       operationId: updateDevice
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
         content:
-          application/json:
+          application/merge-patch+json:
             schema: { $ref: "#/components/schemas/DeviceUpdateRequest" }
       responses:
         "200":
           description: Dispositivo actualizado
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Device" }
+          headers: { ETag: { schema: { type: string } } }
+          content: { application/json: { schema: { $ref: "#/components/schemas/Device" } } }
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
     delete:
       tags: [devices]
       summary: Dar de baja un dispositivo (soft delete)
       operationId: decommissionDevice
       x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IfMatch" }
       responses:
         "204": { description: Dispositivo dado de baja (baja lógica) }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "412": { $ref: "#/components/responses/PreconditionFailed" }
+        "428": { $ref: "#/components/responses/PreconditionRequired" }
+
+  /devices/bulk:
+    post:
+      tags: [bulk]
+      summary: Importación masiva de dispositivos (asíncrona)
+      description: Alta por lotes; ejecución asíncrona → devuelve `jobId`.
+      operationId: bulkImportDevices
+      x-roles: [ADM]
+      parameters:
+        - { $ref: "#/components/parameters/IdempotencyKey" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BulkImportRequest" }
+      responses:
+        "202":
+          description: Importación encolada
+          content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+
+  /devices/bulk/jobs/{jobId}:
+    parameters:
+      - { $ref: "#/components/parameters/JobId" }
+    get:
+      tags: [bulk]
+      summary: Estado de un job de importación masiva
+      operationId: getBulkJob
+      x-roles: [ADM, OPE, AUD]
+      responses:
+        "200":
+          description: Estado del job (resultado por dispositivo)
+          content: { application/json: { schema: { $ref: "#/components/schemas/Job" } } }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
 components:
   securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
-      description: JWT emitido por Keycloak (OAuth2/OIDC)
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT, description: JWT emitido por Keycloak }
 
   parameters:
-    DeviceId:
-      name: deviceId
-      in: path
+    DeviceId: { name: deviceId, in: path, required: true, schema: { type: string, format: uuid } }
+    JobId: { name: jobId, in: path, required: true, schema: { type: string, format: uuid } }
+    Page: { name: page, in: query, schema: { type: integer, minimum: 0, default: 0 } }
+    Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 200, default: 20 } }
+    Sort: { name: sort, in: query, schema: { type: string }, description: "p. ej. hostname,asc" }
+    IfMatch:
+      name: If-Match
+      in: header
       required: true
-      schema: { type: string, format: uuid }
-    Page:
-      name: page
-      in: query
-      schema: { type: integer, minimum: 0, default: 0 }
-    Size:
-      name: size
-      in: query
-      schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
-    Sort:
-      name: sort
-      in: query
-      description: "Campo y dirección, p. ej. hostname,asc"
+      description: ETag del recurso (RFC 7232) — control de concurrencia optimista (ADR-09).
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      description: Clave de idempotencia para deduplicar reintentos de creación (ADR-09).
       schema: { type: string }
 
   responses:
     BadRequest:
       description: Petición malformada
-      content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } }
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
     Unauthorized:
       description: No autenticado o token inválido
-      content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } }
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
     Forbidden:
-      description: Autenticado sin permiso para la operación
-      content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } }
+      description: Autenticado sin permiso
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
     NotFound:
       description: Recurso no encontrado
-      content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } }
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
     Conflict:
-      description: Conflicto (p. ej. hostname/IP ya registrado)
-      content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } }
+      description: Conflicto (p. ej. serialNumber/hostname/IP ya registrado)
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
     UnprocessableEntity:
       description: Validación de negocio fallida
-      content: { application/json: { schema: { $ref: "#/components/schemas/ApiError" } } }
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
+    PreconditionFailed:
+      description: El If-Match no coincide con la versión actual (edición concurrente)
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
+    PreconditionRequired:
+      description: Falta la cabecera If-Match obligatoria
+      content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } }
 
   schemas:
-    Criticality:
-      type: string
-      enum: [ALTA, MEDIA, BAJA]
-    DeviceStatus:
-      type: string
-      enum: [ACTIVO, BAJA]
-    Health:
+    Criticality: { type: string, enum: [ALTA, MEDIA, BAJA] }
+    DeviceStatus: { type: string, enum: [ACTIVO, BAJA] }
+    DeviceType: { type: string, enum: [ROUTER, SWITCH, FIREWALL, HOST, ACCESS_POINT, OTHER] }
+    Health: { type: object, properties: { status: { type: string, example: UP } } }
+
+    Location:
       type: object
+      description: Ubicación física estructurada (DCIM)
       properties:
-        status: { type: string, example: UP }
+        site: { type: string, example: MX-DC1 }
+        room: { type: string, example: "Sala 2" }
+        row: { type: string, example: B }
+        rack: { type: string, example: B07 }
+        rackUnit: { type: ["integer", "null"], minimum: 1, maximum: 60, example: 12 }
+
     Device:
       type: object
-      required: [id, hostname, mgmtIp, criticality, status]
+      required: [id, serialNumber, hostname, mgmtIp, deviceType, criticality, status]
       properties:
         id: { type: string, format: uuid, readOnly: true }
+        serialNumber: { type: string, description: "Identidad estable (inmutable)", example: FCW2245A1BC }
+        assetTag: { type: ["string", "null"], description: "Etiqueta de activo (opcional)" }
         hostname: { type: string, example: SW1-CORE }
-        mgmtIp: { type: string, example: 10.0.0.11 }
+        mgmtIp: { type: string, description: "IP de gestión; enmascarada para el rol Auditor (ADR-11)", example: 10.0.0.11 }
+        deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string, example: Cisco }
         model: { type: string, example: Catalyst 9300 }
-        location: { type: string, example: "Rack A / VLAN 10" }
+        location: { $ref: "#/components/schemas/Location" }
         criticality: { $ref: "#/components/schemas/Criticality" }
         status: { $ref: "#/components/schemas/DeviceStatus", readOnly: true }
         createdAt: { type: string, format: date-time, readOnly: true }
         createdBy: { type: string, readOnly: true }
         updatedAt: { type: string, format: date-time, readOnly: true }
         updatedBy: { type: string, readOnly: true }
+
     DeviceCreateRequest:
       type: object
-      required: [hostname, mgmtIp, criticality]
+      required: [serialNumber, hostname, mgmtIp, deviceType, criticality]
       properties:
+        serialNumber: { type: string, minLength: 1, maxLength: 100 }
+        assetTag: { type: string, maxLength: 100 }
         hostname: { type: string, minLength: 1, maxLength: 255 }
         mgmtIp: { type: string, minLength: 3, maxLength: 45 }
+        deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string }
         model: { type: string }
-        location: { type: string }
+        location: { $ref: "#/components/schemas/Location" }
         criticality: { $ref: "#/components/schemas/Criticality" }
+
+    DeviceUpdateFull:
+      type: object
+      description: Edición completa (PUT). serialNumber es inmutable (no editable).
+      required: [hostname, mgmtIp, deviceType, criticality]
+      properties:
+        assetTag: { type: string }
+        hostname: { type: string, minLength: 1, maxLength: 255 }
+        mgmtIp: { type: string, minLength: 3, maxLength: 45 }
+        deviceType: { $ref: "#/components/schemas/DeviceType" }
+        vendor: { type: string }
+        model: { type: string }
+        location: { $ref: "#/components/schemas/Location" }
+        criticality: { $ref: "#/components/schemas/Criticality" }
+
     DeviceUpdateRequest:
       type: object
-      description: Campos opcionales para edición parcial (PATCH)
+      description: Edición parcial (JSON Merge Patch). serialNumber es inmutable.
       properties:
+        assetTag: { type: string }
         hostname: { type: string, minLength: 1, maxLength: 255 }
         mgmtIp: { type: string, minLength: 3, maxLength: 45 }
+        deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string }
         model: { type: string }
-        location: { type: string }
+        location: { $ref: "#/components/schemas/Location" }
         criticality: { $ref: "#/components/schemas/Criticality" }
+
+    BulkImportRequest:
+      type: object
+      required: [devices]
+      properties:
+        devices:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { $ref: "#/components/schemas/DeviceCreateRequest" }
+
+    Job:
+      type: object
+      properties:
+        jobId: { type: string, format: uuid, readOnly: true }
+        status: { type: string, enum: [QUEUED, IN_PROGRESS, COMPLETED, FAILED] }
+        total: { type: integer }
+        succeeded: { type: integer }
+        failed: { type: integer }
+        results:
+          type: array
+          items:
+            type: object
+            properties:
+              serialNumber: { type: string }
+              outcome: { type: string, example: CREATED }
+              detail: { type: ["string", "null"] }
+
     PageDevice:
       type: object
       properties:
-        content:
-          type: array
-          items: { $ref: "#/components/schemas/Device" }
-        page: { type: integer, example: 0 }
-        size: { type: integer, example: 20 }
-        totalElements: { type: integer, example: 42 }
-        totalPages: { type: integer, example: 3 }
+        content: { type: array, items: { $ref: "#/components/schemas/Device" } }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
         first: { type: boolean }
         last: { type: boolean }
-    ApiError:
+
+    Problem:
       type: object
-      description: Modelo de error uniforme (no filtra internos, RNF-09)
-      required: [code, message]
+      description: Error en formato RFC 7807/9457 (application/problem+json)
       properties:
-        code: { type: string, example: VALIDATION_ERROR }
-        message: { type: string, example: "criticality debe ser ALTA, MEDIA o BAJA" }
+        type: { type: string, format: uri, example: "https://redsegura/errors/validation" }
+        title: { type: string, example: "Validación fallida" }
+        status: { type: integer, example: 422 }
+        detail: { type: string, example: "criticality debe ser ALTA, MEDIA o BAJA" }
+        instance: { type: string, example: "/api/v1/devices" }
         traceId: { type: string, example: b7d9c1a2 }
-        timestamp: { type: string, format: date-time }
