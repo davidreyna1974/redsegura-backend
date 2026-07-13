@@ -37,9 +37,26 @@
         <checkstyle.version>10.18.2</checkstyle.version>
         <jacoco.version>0.8.12</jacoco.version>
 
+        <!-- Mapeo entidad <-> DTO en tiempo de compilacion (ADR-06) -->
+        <mapstruct.version>1.6.3</mapstruct.version>
+
         <!-- Umbral de cobertura minima (gatekeeper: >= 70% statements) -->
         <jacoco.coverage.minimum>0.70</jacoco.coverage.minimum>
     </properties>
+
+    <!--
+      Gestion de dependencias comunes a los microservicios Java. La version de Spring Boot y su
+      ecosistema la aporta el <parent>; aqui se fijan las adicionales del monorepo.
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.mapstruct</groupId>
+                <artifactId>mapstruct</artifactId>
+                <version>${mapstruct.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <!--
       Los modulos (microservicios Java) se agregan aqui a medida que se scaffoldean.
@@ -54,6 +71,21 @@
     <build>
         <pluginManagement>
             <plugins>
+                <!-- Compilador: registra el annotation processor de MapStruct (ADR-06). -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+
                 <!-- Formato: google-java-format via Spotless. Gate: `mvn spotless:check`. -->
                 <plugin>
                     <groupId>com.diffplug.spotless</groupId>
