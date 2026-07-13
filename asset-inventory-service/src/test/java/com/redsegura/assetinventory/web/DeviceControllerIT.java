@@ -1,6 +1,7 @@
 package com.redsegura.assetinventory.web;
 
 import static org.hamcrest.Matchers.is;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -17,9 +18,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-/** Tests de extremo a extremo del controlador (stack completo + PostgreSQL real). */
+/** Tests de extremo a extremo del controlador (stack completo + seguridad + PostgreSQL real). */
 @AutoConfigureMockMvc
 class DeviceControllerIT extends AbstractIntegrationTest {
 
@@ -30,6 +33,14 @@ class DeviceControllerIT extends AbstractIntegrationTest {
   @BeforeEach
   void clean() {
     repository.deleteAll();
+  }
+
+  private static RequestPostProcessor admin() {
+    return jwt().authorities(new SimpleGrantedAuthority("ADM"));
+  }
+
+  private static RequestPostProcessor auditor() {
+    return jwt().authorities(new SimpleGrantedAuthority("AUD"));
   }
 
   private static String body(String serial, String hostname, String ip) {
@@ -46,6 +57,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
         mockMvc
             .perform(
                 post("/api/v1/devices")
+                    .with(admin())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(body("S1", "SW1", "10.0.0.1")))
             .andExpect(status().isCreated())
@@ -58,9 +70,32 @@ class DeviceControllerIT extends AbstractIntegrationTest {
 
     String id = objectMapper.readTree(response).get("id").asText();
     mockMvc
-        .perform(get("/api/v1/devices/{id}", id))
+        .perform(get("/api/v1/devices/{id}", id).with(auditor()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.hostname", is("SW1")));
+  }
+
+  /** SEC-01: alta con rol sin permiso (Auditor) -> 403. */
+  @Test
+  void create_asAuditor_forbidden() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(auditor())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("S1", "SW1", "10.0.0.1")))
+        .andExpect(status().isForbidden());
+  }
+
+  /** SEC-02: alta sin token -> 401. */
+  @Test
+  void create_unauthenticated_returns401() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("S1", "SW1", "10.0.0.1")))
+        .andExpect(status().isUnauthorized());
   }
 
   /** VAL-01/ERR-02: falta serialNumber -> 422 en formato problem+json. */
@@ -70,7 +105,11 @@ class DeviceControllerIT extends AbstractIntegrationTest {
         "{\"hostname\":\"SW1\",\"mgmtIp\":\"10.0.0.1\",\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\"}";
 
     mockMvc
-        .perform(post("/api/v1/devices").contentType(MediaType.APPLICATION_JSON).content(invalid))
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(invalid))
         .andExpect(status().isUnprocessableEntity())
         .andExpect(header().string("Content-Type", "application/problem+json"))
         .andExpect(jsonPath("$.code", is("VALIDATION_ERROR")));
@@ -82,6 +121,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/devices")
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body("S1", "SW1", "999.1.1.1")))
         .andExpect(status().isUnprocessableEntity());
@@ -93,6 +133,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/devices")
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body("DUP", "SW1", "10.0.0.1")))
         .andExpect(status().isCreated());
@@ -100,6 +141,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/devices")
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body("DUP", "SW2", "10.0.0.2")))
         .andExpect(status().isConflict())
@@ -110,7 +152,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
   @Test
   void get_missing_returns404() throws Exception {
     mockMvc
-        .perform(get("/api/v1/devices/{id}", UUID.randomUUID()))
+        .perform(get("/api/v1/devices/{id}", UUID.randomUUID()).with(auditor()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.code", is("DEVICE_NOT_FOUND")));
   }
@@ -121,12 +163,13 @@ class DeviceControllerIT extends AbstractIntegrationTest {
     mockMvc
         .perform(
             post("/api/v1/devices")
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body("S1", "SW-CORE", "10.0.0.1")))
         .andExpect(status().isCreated());
 
     mockMvc
-        .perform(get("/api/v1/devices").param("hostname", "core"))
+        .perform(get("/api/v1/devices").with(auditor()).param("hostname", "core"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.totalElements", is(1)))
         .andExpect(jsonPath("$.content[0].hostname", is("SW-CORE")));
@@ -139,6 +182,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
         mockMvc
             .perform(
                 post("/api/v1/devices")
+                    .with(admin())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(body("S1", "SW1", "10.0.0.1")))
             .andReturn()
@@ -146,10 +190,10 @@ class DeviceControllerIT extends AbstractIntegrationTest {
             .getContentAsString();
     String id = objectMapper.readTree(response).get("id").asText();
 
-    // If-Match es obligatorio en el contrato (concurrencia, ADR-09); su lógica se implementa en
-    // el hito transversal. Se envía un valor cualquiera para satisfacer la cabecera requerida.
+    // If-Match es obligatorio en el contrato (ADR-09); su lógica se implementa en un sub-hito
+    // posterior. Se envía un valor cualquiera para satisfacer la cabecera requerida.
     mockMvc
-        .perform(delete("/api/v1/devices/{id}", id).header("If-Match", "\"0\""))
+        .perform(delete("/api/v1/devices/{id}", id).with(admin()).header("If-Match", "\"0\""))
         .andExpect(status().isNoContent());
   }
 }

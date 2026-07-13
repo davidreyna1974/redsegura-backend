@@ -19,6 +19,14 @@ spring:
   flyway:
     enabled: true
 
+  # OAuth2 Resource Server (RNF-03): valida el JWT de Keycloak. El decoder es perezoso (no
+  # descarga los JWKs al arrancar), por eso no requiere Keycloak vivo en los tests.
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/redsegura/protocol/openid-connect/certs}
+
 server:
   port: 8081
 
