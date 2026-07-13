@@ -15,6 +15,12 @@
     <name>redSegura :: asset-inventory-service</name>
     <description>Inventario único de activos de red — fuente de verdad (RF-01..05)</description>
 
+    <properties>
+        <!-- openapi-generator (swagger-parser) falla si la ruta del spec tiene espacios (la trata
+             como URI). Se copia el openapi.yaml a una ruta temporal SIN espacios y se genera de ahí. -->
+        <openapi.local.spec>${java.io.tmpdir}/redsegura-openapi/asset-inventory-service.yaml</openapi.local.spec>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -72,6 +78,59 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+
+            <!-- Copia el spec a una ruta sin espacios antes de generar (ver propiedad arriba). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-openapi-spec-to-nospace-path</id>
+                        <phase>initialize</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy file="${project.basedir}/openapi.yaml"
+                                      tofile="${openapi.local.spec}" overwrite="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Contract-first (ADR-05): genera las interfaces de API y los DTOs desde openapi.yaml.
+                 El controlador IMPLEMENTA la interfaz generada -> el codigo cumple el contrato por
+                 construccion (elimina la deriva). -->
+            <plugin>
+                <groupId>org.openapitools</groupId>
+                <artifactId>openapi-generator-maven-plugin</artifactId>
+                <version>${openapi-generator.version}</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>${openapi.local.spec}</inputSpec>
+                            <generatorName>spring</generatorName>
+                            <apiPackage>com.redsegura.assetinventory.generated.api</apiPackage>
+                            <modelPackage>com.redsegura.assetinventory.generated.model</modelPackage>
+                            <configOptions>
+                                <interfaceOnly>true</interfaceOnly>
+                                <useSpringBoot3>true</useSpringBoot3>
+                                <useJakartaEe>true</useJakartaEe>
+                                <useTags>true</useTags>
+                                <openApiNullable>false</openApiNullable>
+                                <documentationProvider>none</documentationProvider>
+                                <annotationLibrary>none</annotationLibrary>
+                            </configOptions>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

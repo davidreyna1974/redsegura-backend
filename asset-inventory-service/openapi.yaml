@@ -96,13 +96,13 @@ paths:
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
 
   /devices/{deviceId}:
-    parameters:
-      - { $ref: "#/components/parameters/DeviceId" }
     get:
       tags: [devices]
       summary: Consultar un dispositivo
       operationId: getDevice
       x-roles: [ADM, OPE, AUD]
+      parameters:
+        - { $ref: "#/components/parameters/DeviceId" }
       responses:
         "200":
           description: Dispositivo
@@ -118,6 +118,7 @@ paths:
       operationId: replaceDevice
       x-roles: [ADM]
       parameters:
+        - { $ref: "#/components/parameters/DeviceId" }
         - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
@@ -143,6 +144,7 @@ paths:
       operationId: updateDevice
       x-roles: [ADM]
       parameters:
+        - { $ref: "#/components/parameters/DeviceId" }
         - { $ref: "#/components/parameters/IfMatch" }
       requestBody:
         required: true
@@ -168,6 +170,7 @@ paths:
       operationId: decommissionDevice
       x-roles: [ADM]
       parameters:
+        - { $ref: "#/components/parameters/DeviceId" }
         - { $ref: "#/components/parameters/IfMatch" }
       responses:
         "204": { description: Dispositivo dado de baja (baja lógica) }
@@ -308,7 +311,7 @@ components:
         serialNumber: { type: string, minLength: 1, maxLength: 100 }
         assetTag: { type: string, maxLength: 100 }
         hostname: { type: string, minLength: 1, maxLength: 255 }
-        mgmtIp: { type: string, minLength: 3, maxLength: 45 }
+        mgmtIp: { type: string, minLength: 3, maxLength: 45, pattern: '^((25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(25[0-5]|2[0-4]\d|[01]?\d?\d)$' }
         deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string }
         model: { type: string }
@@ -322,7 +325,7 @@ components:
       properties:
         assetTag: { type: string }
         hostname: { type: string, minLength: 1, maxLength: 255 }
-        mgmtIp: { type: string, minLength: 3, maxLength: 45 }
+        mgmtIp: { type: string, minLength: 3, maxLength: 45, pattern: '^((25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(25[0-5]|2[0-4]\d|[01]?\d?\d)$' }
         deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string }
         model: { type: string }
@@ -335,7 +338,7 @@ components:
       properties:
         assetTag: { type: string }
         hostname: { type: string, minLength: 1, maxLength: 255 }
-        mgmtIp: { type: string, minLength: 3, maxLength: 45 }
+        mgmtIp: { type: string, minLength: 3, maxLength: 45, pattern: '^((25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(25[0-5]|2[0-4]\d|[01]?\d?\d)$' }
         deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string }
         model: { type: string }
