@@ -41,7 +41,8 @@
 | RN-01 | POST /devices | RN | `serialNumber` duplicado (RN1) | ADM | **409** `DEVICE_ALREADY_EXISTS` | ⏳ |
 | RN-02 | POST /devices | RN | `hostname` o `mgmtIp` duplicado (RN1) | ADM | **409** | ⏳ |
 | RN-03 | POST /devices | RN | Alta confirmada publica `asset.created` (RN11, outbox) | ADM | Evento en broker tras commit | ⏳ |
-| RN-04 | POST /devices | RN | Idempotencia: mismo `Idempotency-Key` repetido (RN9) | ADM | 2ª respuesta = 1ª; **no** crea duplicado | ⏳ |
+| RN-04 | POST /devices | RN | Idempotencia: mismo `Idempotency-Key` **y mismo cuerpo** (RN9) | ADM | 2ª respuesta = 1ª; **no** crea duplicado | ✅ |
+| RN-04b | POST /devices | RN | Idempotencia: mismo `Idempotency-Key` con **cuerpo distinto** (RN9) | ADM | **409** `IDEMPOTENCY_KEY_CONFLICT`; no crea duplicado | ✅ |
 
 ## Listar / filtrar — `GET /devices`
 

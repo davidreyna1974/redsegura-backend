@@ -3,6 +3,7 @@ package com.redsegura.assetinventory.web;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
+import com.redsegura.assetinventory.exception.IdempotencyKeyConflictException;
 import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
@@ -40,6 +41,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   ProblemDetail handleDecommissioned(DeviceDecommissionedException ex) {
     return problem(
         HttpStatus.CONFLICT, "Dispositivo dado de baja", ex.getMessage(), "DEVICE_DECOMMISSIONED");
+  }
+
+  /** RN9: reuso del Idempotency-Key con un cuerpo distinto -> 409. */
+  @ExceptionHandler(IdempotencyKeyConflictException.class)
+  ProblemDetail handleIdempotencyConflict(IdempotencyKeyConflictException ex) {
+    return problem(
+        HttpStatus.CONFLICT,
+        "Reuso de Idempotency-Key",
+        ex.getMessage(),
+        "IDEMPOTENCY_KEY_CONFLICT");
   }
 
   /** RN8: el If-Match no coincide con la versión actual -> 412. */

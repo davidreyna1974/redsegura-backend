@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.redsegura.assetinventory.AbstractIntegrationTest;
 import com.redsegura.assetinventory.repository.DeviceRepository;
+import com.redsegura.assetinventory.repository.IdempotencyRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,9 +31,11 @@ class DeviceControllerIT extends AbstractIntegrationTest {
   @Autowired private MockMvc mockMvc;
   @Autowired private ObjectMapper objectMapper;
   @Autowired private DeviceRepository repository;
+  @Autowired private IdempotencyRepository idempotencyRepository;
 
   @BeforeEach
   void clean() {
+    idempotencyRepository.deleteAll();
     repository.deleteAll();
   }
 
@@ -220,6 +223,29 @@ class DeviceControllerIT extends AbstractIntegrationTest {
                 .content(b))
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$.serialNumber", is("S1")));
+  }
+
+  /** RN9: misma Idempotency-Key con cuerpo distinto -> 409 problem+json (no replay silencioso). */
+  @Test
+  void create_withSameIdempotencyKeyDifferentBody_returns409() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .header("Idempotency-Key", "k-2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("S1", "SW1", "10.0.0.1")))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .header("Idempotency-Key", "k-2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("S2", "SW2", "10.0.0.2")))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code", is("IDEMPOTENCY_KEY_CONFLICT")));
   }
 
   private String createAndGetId() throws Exception {

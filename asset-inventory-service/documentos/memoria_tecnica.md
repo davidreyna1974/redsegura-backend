@@ -36,7 +36,7 @@ Patrón `controller → service → repository` (estándares §3.1):
 - **`Device`** (entidad) — extiende una `@MappedSuperclass Auditable`; `@Version` para concurrencia.
 - **`OutboxPublisher`** — escribe el evento en la tabla outbox dentro de la transacción; un relay lo publica a RabbitMQ.
 - **`MgmtIpRedactor`** — enmascara `mgmtIp` según el rol (ADR-11).
-- **`IdempotencyStore`** — persiste `Idempotency-Key`→respuesta.
+- **`IdempotencyRecord`/`IdempotencyRepository`** — persisten `(Idempotency-Key, usuario)` → hash del cuerpo + dispositivo creado.
 - **`BulkImportJob`** — worker asíncrono de importación con resultado por dispositivo.
 
 ## 4. Contratos con dependencias
@@ -52,7 +52,8 @@ Patrón `controller → service → repository` (estándares §3.1):
 - **Concurrencia ETag↔`@Version` (RN8):** el `ETag` se deriva de `@Version`; en `PUT/PATCH/DELETE`
   se compara `If-Match` con la versión actual → 412 si difiere, 428 si falta la cabecera.
 - **Soft delete + filtro por defecto (RN6):** los listados excluyen `status=BAJA` salvo filtro explícito.
-- **Idempotencia (RN9):** ante un `Idempotency-Key` ya visto, se devuelve la respuesta original sin re-crear.
+- **Idempotencia (RN9):** clave acotada por usuario + hash SHA-256 del cuerpo. Misma clave y cuerpo →
+  replay del original; misma clave con cuerpo distinto → 409 (evita replay de un recurso ajeno).
 - **Transactional outbox (RN11):** el evento se escribe en la tabla outbox en la **misma** transacción
   que la mutación; un proceso relay lo publica → si la transacción no confirma, no hay evento.
 - **Redacción `mgmtIp` (RN10):** para Auditor se enmascara en el servidor **antes** de serializar
@@ -98,8 +99,17 @@ tests (incluye FLOW-02 412, FLOW-03 428, PATCH feliz con ETag), cobertura ≥70%
 
 **Hito 4c — idempotencia (2026-07-13):** `POST` con `Idempotency-Key` (RN9). Tabla
 `idempotency_keys` (Flyway V2); si la clave ya existe se devuelve el dispositivo original (replay,
-sin duplicar); la clave y el dispositivo se guardan en la misma transacción. `mvn verify` → 34
-tests (incluye replay a nivel servicio y API), cobertura ≥70%, 0 Checkstyle.
+sin duplicar); la clave y el dispositivo se guardan en la misma transacción.
+
+**Hito 4c-bis — idempotencia endurecida (2026-07-13):** se eliminó la simplificación "global por
+clave". Ahora la clave se **acota por usuario** (`created_by`, del sujeto JWT vía `AuditorAware`):
+dos clientes distintos pueden usar la misma cadena sin colisionar (unicidad `(id_key, created_by)`).
+Además se guarda el **SHA-256 del cuerpo canónico** (`request_hash`, serializado con Jackson):
+misma clave + mismo cuerpo → replay; misma clave + **cuerpo distinto** → **409**
+(`IDEMPOTENCY_KEY_CONFLICT`), en vez de reproducir silenciosamente un recurso ajeno a la petición.
+`mvn verify` → 36 tests (replay + conflicto, a nivel servicio y API), cobertura ≥70%, 0 Checkstyle.
+*Deuda restante:* TTL de expiración de claves y persistencia de la respuesta HTTP completa (hoy se
+re-lee el dispositivo).
 
 **Pendiente (Hito 4, resto):** redacción de `mgmtIp` (RN10), publicación de eventos vía outbox
 (RN11), bulk import, y Pact de eventos `asset.*`. Nota: 401/403 aún no salen en `problem+json`

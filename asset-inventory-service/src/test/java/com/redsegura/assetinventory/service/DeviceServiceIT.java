@@ -7,6 +7,7 @@ import com.redsegura.assetinventory.AbstractIntegrationTest;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
+import com.redsegura.assetinventory.exception.IdempotencyKeyConflictException;
 import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import com.redsegura.assetinventory.generated.model.Criticality;
 import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
@@ -15,6 +16,7 @@ import com.redsegura.assetinventory.generated.model.DeviceType;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
 import com.redsegura.assetinventory.generated.model.Location;
 import com.redsegura.assetinventory.repository.DeviceRepository;
+import com.redsegura.assetinventory.repository.IdempotencyRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,9 +30,11 @@ class DeviceServiceIT extends AbstractIntegrationTest {
 
   @Autowired private DeviceService service;
   @Autowired private DeviceRepository repository;
+  @Autowired private IdempotencyRepository idempotencyRepository;
 
   @BeforeEach
   void clean() {
+    idempotencyRepository.deleteAll();
     repository.deleteAll();
   }
 
@@ -156,16 +160,26 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     assertThat(page.getTotalElements()).isEqualTo(1);
   }
 
-  /** RN9: un POST con la misma Idempotency-Key devuelve el original y no duplica. */
+  /** RN9: un POST con la misma Idempotency-Key y el mismo cuerpo devuelve el original y no duplica. */
   @Test
-  void create_withSameIdempotencyKey_isReplayed() {
+  void create_withSameIdempotencyKeyAndBody_isReplayed() {
     VersionedDevice first = service.create(req("S1", "SW1", "10.0.0.1"), "key-123");
 
-    // Reintento con la misma clave (incluso con otro cuerpo): devuelve el original.
-    VersionedDevice replay = service.create(req("S2", "SW2", "10.0.0.2"), "key-123");
+    // Reintento idéntico (misma clave, mismo cuerpo): devuelve el original sin duplicar.
+    VersionedDevice replay = service.create(req("S1", "SW1", "10.0.0.1"), "key-123");
 
     assertThat(replay.body().getId()).isEqualTo(first.body().getId());
     assertThat(replay.body().getSerialNumber()).isEqualTo("S1");
+    assertThat(repository.count()).isEqualTo(1);
+  }
+
+  /** RN9: reuso de la misma Idempotency-Key con un cuerpo distinto -> 409 (no replay silencioso). */
+  @Test
+  void create_withSameIdempotencyKeyDifferentBody_throwsConflict() {
+    service.create(req("S1", "SW1", "10.0.0.1"), "key-123");
+
+    assertThatThrownBy(() -> service.create(req("S2", "SW2", "10.0.0.2"), "key-123"))
+        .isInstanceOf(IdempotencyKeyConflictException.class);
     assertThat(repository.count()).isEqualTo(1);
   }
 }
