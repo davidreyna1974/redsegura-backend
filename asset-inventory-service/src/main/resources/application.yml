@@ -31,13 +31,21 @@ server:
   port: 8081
 
 # Observabilidad (RNF-15..17). Los probes del contrato viven en /api/v1/health/*;
-# Actuator queda disponible para métricas/health internos.
+# Actuator expone health + métricas Prometheus. El traceId/spanId (Micrometer Tracing) se
+# propaga e inyecta en los logs JSON; el exportador OTLP a Jaeger se activa por entorno.
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,info,prometheus,metrics
   endpoint:
     health:
       probes:
         enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      # 1.0 en desarrollo (todas las peticiones). Bajar por entorno en producción de alto volumen.
+      probability: ${TRACING_SAMPLE_PROBABILITY:1.0}

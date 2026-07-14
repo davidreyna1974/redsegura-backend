@@ -54,6 +54,10 @@
 
         <!-- Umbral de cobertura minima (gatekeeper: >= 70% statements) -->
         <jacoco.coverage.minimum>0.70</jacoco.coverage.minimum>
+
+        <!-- Observabilidad: encoder de logs estructurados JSON (RNF-17). El resto (micrometer,
+             prometheus, tracing) lo gestiona el BOM de Spring Boot. -->
+        <logstash.logback.version>8.0</logstash.logback.version>
     </properties>
 
     <!--
@@ -69,6 +73,33 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <!--
+      Dependencias comunes heredadas por TODOS los servicios Java del monorepo. Observabilidad de
+      3 pilares (A7/RNF-15/16/17), transversal para no repetirla servicio a servicio:
+        - metricas:  micrometer-registry-prometheus expone /actuator/prometheus (RNF-15).
+        - trazas:    micrometer-tracing-bridge-otel genera y propaga traceId/spanId y los inyecta
+                     en el MDC de los logs (RNF-16). El exportador OTLP a Jaeger se anade por
+                     entorno cuando exista el colector; sin el, no hay trafico de red.
+        - logs:      logstash-logback-encoder emite logs estructurados JSON (RNF-17); el formato
+                     concreto vive en cada servicio en logback-spring.xml.
+    -->
+    <dependencies>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logstash.logback.version}</version>
+        </dependency>
+    </dependencies>
 
     <!--
       Los modulos (microservicios Java) se agregan aqui a medida que se scaffoldean.

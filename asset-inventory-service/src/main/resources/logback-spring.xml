@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Logs estructurados JSON (RNF-17), para que Loki/Promtail los indexen. Cada línea es un objeto JSON
+  con timestamp, nivel, logger, hilo, mensaje, el MDC (incluye traceId/spanId de Micrometer Tracing,
+  RNF-16) y el nombre del servicio. NUNCA se registran datos sensibles (mgmtIp, credenciales,
+  secretos): la redacción es responsabilidad del código que emite el log (p. ej. SecurityAuditLogger).
+
+  Config estándar del monorepo: replicar en cada servicio Java (o extraer a un módulo commons cuando
+  haya un segundo servicio).
+-->
+<configuration>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <springProperty scope="context" name="appName" source="spring.application.name" defaultValue="unknown"/>
+
+  <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <includeMdc>true</includeMdc>
+      <includeContext>false</includeContext>
+      <customFields>{"service":"${appName}"}</customFields>
+      <fieldNames>
+        <timestamp>timestamp</timestamp>
+        <level>level</level>
+        <logger>logger</logger>
+        <thread>thread</thread>
+        <message>message</message>
+        <stackTrace>stackTrace</stackTrace>
+      </fieldNames>
+    </encoder>
+  </appender>
+
+  <root level="INFO">
+    <appender-ref ref="JSON"/>
+  </root>
+</configuration>
