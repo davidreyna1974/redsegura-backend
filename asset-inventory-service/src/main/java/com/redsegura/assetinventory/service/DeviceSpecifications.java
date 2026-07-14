@@ -14,13 +14,16 @@ public final class DeviceSpecifications {
 
   private DeviceSpecifications() {}
 
-  /** Carácter de escape para {@code LIKE} (evita que {@code %}/{@code _} del input actúen como comodín). */
+  /**
+   * Carácter de escape para {@code LIKE} (evita que {@code %}/{@code _} del input actúen como
+   * comodín).
+   */
   private static final char LIKE_ESCAPE = '\\';
 
   /**
-   * Filtros combinables (AND); los nulos se omiten. {@code hostname}, {@code vendor} y {@code model}
-   * son búsqueda parcial insensible a mayúsculas; el resto es coincidencia exacta. RN6/FLOW-01: si no
-   * se pide {@code status}, se excluyen los dados de baja.
+   * Filtros combinables (AND); los nulos se omiten. {@code hostname}, {@code vendor} y {@code
+   * model} son búsqueda parcial insensible a mayúsculas; el resto es coincidencia exacta.
+   * RN6/FLOW-01: si no se pide {@code status}, se excluyen los dados de baja.
    */
   public static Specification<Device> withFilters(
       String hostname,
@@ -75,10 +78,7 @@ public final class DeviceSpecifications {
   /** Patrón {@code %valor%} en minúsculas, con los comodines de LIKE del input escapados. */
   private static String containsPattern(String raw) {
     String escaped =
-        raw.toLowerCase()
-            .replace("\\", "\\\\")
-            .replace("%", "\\%")
-            .replace("_", "\\_");
+        raw.toLowerCase().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
     return "%" + escaped + "%";
   }
 }

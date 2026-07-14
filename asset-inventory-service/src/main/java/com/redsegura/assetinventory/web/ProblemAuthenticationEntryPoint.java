@@ -11,8 +11,9 @@ import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
 /**
- * Respuesta 401 en {@code application/problem+json} (ADR-08) cuando falta autenticación o el token es
- * inválido, en vez del cuerpo vacío por defecto. Registra el intento en el log de seguridad (ADR-11).
+ * Respuesta 401 en {@code application/problem+json} (ADR-08) cuando falta autenticación o el token
+ * es inválido, en vez del cuerpo vacío por defecto. Registra el intento en el log de seguridad
+ * (ADR-11).
  */
 @Component
 public class ProblemAuthenticationEntryPoint implements AuthenticationEntryPoint {

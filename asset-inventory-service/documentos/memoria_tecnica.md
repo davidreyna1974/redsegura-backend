@@ -218,6 +218,7 @@ LINE 86.7% (excluyendo generado), 0 Checkstyle.
 | B5 | Búsqueda parcial: `%`/`_` del input actuaban como comodín | `LIKE` sin escapar | Escapar comodines + `ESCAPE` | Menor |
 | E1 | `ddl-auto=validate` fallaba: `bpchar` vs `varchar` | Migración con `CHAR(64)` vs `String`→`VARCHAR` | Migración a `VARCHAR(64)` | Sí (ver memoria de entorno) |
 | E2 | Tests con `@MockBean` fallaban: "Java 24 not supported by Byte Buddy" | El `mvn` de Homebrew usa openjdk 24; el proyecto/CI son Java 21 | `maven-toolchains-plugin` fija el build a JDK 21 (Corretto) — compilar/testear en el target, como CI | Sí (ver memoria de entorno) |
+| E3 | El gate de formato/estilo no corría en `mvn verify` (violaciones acumuladas, detectadas al activar CI) | `spotless`/`checkstyle` estaban solo en `pluginManagement`, sin execution ligada a una fase | Ligar `spotless:check` + `checkstyle:check` a la fase `verify` en el POM padre → `mvn verify` es el gatekeeper único e insaltable | Sí: un gate no ligado a una fase no se ejecuta; el CI lo destapó |
 
 ## 9. Estándares y buenas prácticas aplicadas
 Contract-first (ADR-05), MapStruct (ADR-06), auditoría (ADR-07), RFC 7807 (ADR-08),

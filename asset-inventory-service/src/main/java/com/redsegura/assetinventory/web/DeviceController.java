@@ -1,5 +1,6 @@
 package com.redsegura.assetinventory.web;
 
+import com.redsegura.assetinventory.exception.InvalidRequestException;
 import com.redsegura.assetinventory.generated.api.DevicesApi;
 import com.redsegura.assetinventory.generated.model.Criticality;
 import com.redsegura.assetinventory.generated.model.Device;
@@ -8,7 +9,6 @@ import com.redsegura.assetinventory.generated.model.DeviceStatus;
 import com.redsegura.assetinventory.generated.model.DeviceType;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
-import com.redsegura.assetinventory.exception.InvalidRequestException;
 import com.redsegura.assetinventory.generated.model.PageDevice;
 import com.redsegura.assetinventory.security.MgmtIpRedactor;
 import com.redsegura.assetinventory.security.SecurityAuditLogger;
@@ -30,8 +30,8 @@ import org.springframework.web.bind.annotation.RestController;
  * contrato por construcción (si el contrato cambia, esto deja de compilar hasta actualizarse).
  *
  * <p>El generador mapea a {@code /devices}; el {@code @RequestMapping("/api/v1")} de clase añade el
- * prefijo. Las cabeceras {@code If-Match} (concurrencia optimista, ADR-09) e {@code Idempotency-Key}
- * (deduplicación de altas, RN9) están implementadas.
+ * prefijo. Las cabeceras {@code If-Match} (concurrencia optimista, ADR-09) e {@code
+ * Idempotency-Key} (deduplicación de altas, RN9) están implementadas.
  */
 @RestController
 @RequestMapping("/api/v1")

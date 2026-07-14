@@ -8,9 +8,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ProblemDetail;
 
 /**
- * Escribe un {@link ProblemDetail} (RFC 7807, ADR-08) directamente en la respuesta HTTP. Lo usan los
- * manejadores de seguridad (401/403), que actúan en la cadena de filtros —antes de Spring MVC— y por
- * tanto no pueden apoyarse en {@code @RestControllerAdvice}.
+ * Escribe un {@link ProblemDetail} (RFC 7807, ADR-08) directamente en la respuesta HTTP. Lo usan
+ * los manejadores de seguridad (401/403), que actúan en la cadena de filtros —antes de Spring MVC—
+ * y por tanto no pueden apoyarse en {@code @RestControllerAdvice}.
  */
 final class ProblemResponseWriter {
 
