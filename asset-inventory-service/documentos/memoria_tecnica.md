@@ -152,9 +152,10 @@ LINE 86.7% (excluyendo generado), 0 Checkstyle.
 
 > Nota de entorno: docker-java usa por defecto una API de Docker que Docker Desktop reciente
 > rechaza; se fija `-Dapi.version` en Surefire (POM padre). Testcontainers subido a 1.20.4.
-> Además, la JVM de ejecución es Java 24 (el proyecto compila a Java 21): el Byte Buddy de Mockito
-> 5.11 no soporta Java 24 → se fija `-Dnet.bytebuddy.experimental=true` en Surefire (POM padre) para
-> los tests con `@MockBean`.
+> Además, el `mvn` de Homebrew arrastra openjdk 24, pero el proyecto compila a Java 21 y CI corre en
+> Temurin 21; en Java 24 el Byte Buddy de Mockito 5.11 rompe los tests con `@MockBean`. Se fija el
+> JDK del build a 21 con `maven-toolchains-plugin` (POM padre) + `~/.m2/toolchains.xml` → compiler y
+> surefire usan Corretto 21 sin importar el JDK que lance Maven (ver `backend/toolchains.sample.xml`).
 
 ## 8. Bugs y retos durante el desarrollo
 | ID | Síntoma | Causa raíz | Fix | ¿Lección? |
@@ -165,7 +166,7 @@ LINE 86.7% (excluyendo generado), 0 Checkstyle.
 | B4 | `size` de página sin límite | Sin tope en `toPageable` | Acotar a `MAX_PAGE_SIZE=100` | Sí: paginación sin tope = vector de DoS |
 | B5 | Búsqueda parcial: `%`/`_` del input actuaban como comodín | `LIKE` sin escapar | Escapar comodines + `ESCAPE` | Menor |
 | E1 | `ddl-auto=validate` fallaba: `bpchar` vs `varchar` | Migración con `CHAR(64)` vs `String`→`VARCHAR` | Migración a `VARCHAR(64)` | Sí (ver memoria de entorno) |
-| E2 | Tests con `@MockBean` fallaban: "Java 24 not supported by Byte Buddy" | JVM de ejecución Java 24; Mockito 5.11 soporta ≤23 | `-Dnet.bytebuddy.experimental=true` en Surefire | Sí (ver memoria de entorno) |
+| E2 | Tests con `@MockBean` fallaban: "Java 24 not supported by Byte Buddy" | El `mvn` de Homebrew usa openjdk 24; el proyecto/CI son Java 21 | `maven-toolchains-plugin` fija el build a JDK 21 (Corretto) — compilar/testear en el target, como CI | Sí (ver memoria de entorno) |
 
 ## 9. Estándares y buenas prácticas aplicadas
 Contract-first (ADR-05), MapStruct (ADR-06), auditoría (ADR-07), RFC 7807 (ADR-08),

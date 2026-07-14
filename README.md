@@ -49,6 +49,12 @@ vive en el repositorio umbrella `management`:
 
 ## 🚀 Cómo construir y validar (gatekeeper por microservicio)
 
+> **Prerrequisito (servicios Java): JDK 21.** El build fija el JDK a 21 con
+> `maven-toolchains-plugin` (el target del proyecto y el de CI, Temurin 21), con independencia del
+> JDK que lance a Maven. Copia [`toolchains.sample.xml`](toolchains.sample.xml) a `~/.m2/toolchains.xml`
+> y ajusta la ruta a tu JDK 21 (macOS: `/usr/libexec/java_home -v 21`). Si falta, el build falla con
+> un mensaje claro. En CI no hace falta: `actions/setup-java` genera el `toolchains.xml`.
+
 **Servicios Java (Maven):**
 ```bash
 mvn -pl <servicio> -am clean package                 # build

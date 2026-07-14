@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  EJEMPLO de toolchains de Maven para redSegura (backend).
+
+  El POM padre exige, vía maven-toolchains-plugin, un toolchain "jdk 21" para compilar y
+  ejecutar los tests SIEMPRE en Java 21 (el target del proyecto y el JDK de CI: Temurin 21),
+  con independencia del JDK que lance a Maven. Esto evita que un JDK más nuevo del entorno
+  (p. ej. el openjdk 24 que arrastra Homebrew con `mvn`) rompa herramientas como el Byte Buddy
+  de Mockito.
+
+  Instalación (una vez por máquina):
+    1. Tener un JDK 21 instalado (p. ej. Amazon Corretto 21 o Temurin 21).
+    2. Copiar este archivo a ~/.m2/toolchains.xml y ajustar <jdkHome> a la ruta real.
+       En macOS:  /usr/libexec/java_home -v 21   imprime la ruta.
+
+  En CI no hace falta: actions/setup-java@v4 genera ~/.m2/toolchains.xml automáticamente.
+-->
+<toolchains>
+  <toolchain>
+    <type>jdk</type>
+    <provides>
+      <version>21</version>
+      <vendor>amazon</vendor>
+    </provides>
+    <configuration>
+      <!-- Ajusta esta ruta a tu JDK 21 (macOS: `/usr/libexec/java_home -v 21`). -->
+      <jdkHome>/Library/Java/JavaVirtualMachines/amazon-corretto-21.jdk/Contents/Home</jdkHome>
+    </configuration>
+  </toolchain>
+</toolchains>
