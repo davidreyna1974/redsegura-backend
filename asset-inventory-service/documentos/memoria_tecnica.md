@@ -41,7 +41,8 @@ Patrón `controller → service → repository` (estándares §3.1):
 - **`SecurityAuditLogger`** — log de seguridad (OWASP A09): denegaciones, auth fallida y mutaciones con actor.
 - **`ProblemAuthenticationEntryPoint`/`ProblemAccessDeniedHandler`** — 401/403 en `problem+json` (ADR-08).
 - **`IdempotencyRecord`/`IdempotencyRepository`** — persisten `(Idempotency-Key, usuario)` → hash del cuerpo + dispositivo creado.
-- **`BulkImportJob`** — worker asíncrono de importación con resultado por dispositivo.
+- **`BulkImportService`/`BulkImportProcessor`** — alta de job + worker asíncrono (aislado por ítem) de importación masiva.
+- **`JobService`/`JobMapper`** — ciclo de vida del job (estado + resultados) y mapeo al DTO del contrato.
 
 ## 4. Contratos con dependencias
 - **API propia:** `../openapi.yaml` (validado; gobernado por Spectral).
@@ -178,13 +179,31 @@ catálogo de eventos §3.3/§4.1.
 OutboxRelayIT: publicación real a RabbitMQ con Testcontainers), cobertura ≥70%, 0 Checkstyle.
 *Refinamiento pendiente:* publisher confirms (marcar publicado solo tras ACK del broker).
 
+**Hito 4f — importación masiva asíncrona (2026-07-14):** implementa RF-04 (`POST /devices/bulk`,
+`GET /devices/bulk/jobs/{jobId}`).
+
+- **Job + resultados (`import_jobs`/`import_job_results`, Flyway V4):** el POST valida (`minItems 1`,
+  `maxItems 1000` del contrato → 422), crea el job `QUEUED` y **encola** el procesamiento; responde
+  **202** con el job (+`Location` al recurso de estado). El GET devuelve estado y resultado por
+  dispositivo (`CREATED`/`FAILED` + `detail`).
+- **Worker asíncrono (`BulkImportProcessor` @Async, pool acotado):** procesa **aislado por ítem**
+  (cada alta y cada registro de resultado en su propia transacción) → un duplicado falla solo ese
+  dispositivo; los demás continúan. Cada alta exitosa emite `asset.created` (outbox).
+- **Contexto de seguridad propagado** al hilo del worker (`DelegatingSecurityContextAsyncTaskExecutor`)
+  → los dispositivos importados llevan el actor real en `created_by`.
+- **Idempotencia a nivel job** (`BulkImportService`): misma `Idempotency-Key` + mismo cuerpo → mismo
+  job (replay); cuerpo distinto → 409 (RN9), acotada por usuario.
+
+`mvn verify` → **57 tests** (BulkImportIT: aislamiento de duplicados; BulkControllerIT: 202→COMPLETED
+con polling, RBAC 403, 422 lote vacío, 404 job, replay idempotente), cobertura ≥70%, 0 Checkstyle.
+
 **Backlog de producción (deuda explícita, hito propio):**
 - **Seguridad JWT:** validar `issuer`/`audience` (hoy solo se valida la firma vía `jwk-set-uri`);
   wire de un `OAuth2TokenValidator` cuando se fije el realm de Keycloak.
 - **Observabilidad — exportadores:** activar el exportador OTLP a Jaeger y el scrape de Prometheus
   por entorno (Docker Compose / k8s) cuando exista el stack; extraer `logback-spring.xml` a un módulo
   commons al scaffoldear el segundo servicio Java.
-- **Hito 4 (resto):** bulk import (4f); Pact del contrato de eventos `asset.*`; publisher confirms.
+- **Mensajería:** publisher confirms (marcar publicado tras ACK); Pact del contrato de eventos `asset.*`.
 - **Robustez BD (menor):** CHECK constraints de enums/`rack_unit`, índices en `loc_site`/`loc_rack`.
 - **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`), soporte **IPv6** en `mgmtIp`.
 

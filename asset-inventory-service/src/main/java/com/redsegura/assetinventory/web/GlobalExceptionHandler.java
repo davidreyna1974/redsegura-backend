@@ -5,6 +5,7 @@ import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
 import com.redsegura.assetinventory.exception.IdempotencyKeyConflictException;
 import com.redsegura.assetinventory.exception.InvalidRequestException;
+import com.redsegura.assetinventory.exception.JobNotFoundException;
 import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +31,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   ProblemDetail handleNotFound(DeviceNotFoundException ex) {
     return problem(
         HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage(), "DEVICE_NOT_FOUND");
+  }
+
+  @ExceptionHandler(JobNotFoundException.class)
+  ProblemDetail handleJobNotFound(JobNotFoundException ex) {
+    return problem(HttpStatus.NOT_FOUND, "Recurso no encontrado", ex.getMessage(), "JOB_NOT_FOUND");
   }
 
   @ExceptionHandler(DuplicateDeviceException.class)
