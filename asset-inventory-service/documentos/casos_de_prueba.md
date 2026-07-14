@@ -100,11 +100,14 @@
 
 | ID | Unidad | Cat. | Descripción | Rol(es) | Resultado esperado | Estado |
 |---|---|---|---|---|---|---|
-| CRUD-07 | POST /devices/bulk | CRUD | Importación válida | ADM | **202** + `jobId` (asíncrono) | ⏳ |
-| SEC-05 | POST /devices/bulk | SEC | Importación con rol sin permiso | OPE, AUD | **403** | ⏳ |
-| FLOW-05 | GET /devices/bulk/jobs/{jobId} | FLOW | Seguimiento del job | ADM, OPE, AUD | Estado QUEUED→IN_PROGRESS→COMPLETED | ⏳ |
-| RN-10 | POST /devices/bulk | RN | Lote con algunos inválidos (serial dup / VAL) | ADM | Job con resultado **por dispositivo** (succeeded/failed) | ⏳ |
-| VAL-08 | POST /devices/bulk | VAL | Lote vacío o > 1000 | ADM | 422 | ⏳ |
+| CRUD-07 | POST /devices/bulk | CRUD | Importación válida | ADM | **202** + `jobId` (asíncrono); job termina COMPLETED | ✅ |
+| SEC-05 | POST /devices/bulk | SEC | Importación con rol sin permiso | OPE, AUD | **403** | ✅ |
+| FLOW-05 | GET /devices/bulk/jobs/{jobId} | FLOW | Seguimiento del job | ADM, OPE, AUD | Estado QUEUED→…→COMPLETED (polling) | ✅ |
+| FLOW-05b | GET /devices/bulk/jobs/{jobId} | ERR | Job inexistente | ADM | **404** `JOB_NOT_FOUND` | ✅ |
+| RN-10 | POST /devices/bulk | RN | Lote con algunos inválidos (serial dup) | ADM | Job con resultado **por dispositivo** (succeeded/failed) | ✅ |
+| RN-10b | POST /devices/bulk | RN | Misma `Idempotency-Key` + mismo cuerpo | ADM | Mismo `jobId` (replay); cuerpo distinto → 409 | ✅ |
+| VAL-08 | POST /devices/bulk | VAL | Lote vacío (`minItems`) | ADM | **422** | ✅ |
+| VAL-08b | POST /devices/bulk | VAL | Lote > 1000 (`maxItems`) | ADM | 422 (cubierto por Bean Validation del contrato) | ⏳ |
 
 ## Transversal — errores, seguridad, ciberseguridad
 
