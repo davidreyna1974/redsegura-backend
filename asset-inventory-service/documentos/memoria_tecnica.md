@@ -34,7 +34,9 @@ Patrón `controller → service → repository` (estándares §3.1):
 - **`DeviceRepository`** (JPA) — persistencia; índices únicos en `serialNumber`, `hostname`, `mgmtIp`.
 - **`DeviceMapper`** (MapStruct) — entidad `Device` ↔ DTOs.
 - **`Device`** (entidad) — extiende una `@MappedSuperclass Auditable`; `@Version` para concurrencia.
-- **`OutboxPublisher`** — escribe el evento en la tabla outbox dentro de la transacción; un relay lo publica a RabbitMQ.
+- **`OutboxWriter`** — escribe el evento `asset.*` (sobre completo) en `outbox_events` dentro de la transacción de negocio.
+- **`OutboxRelay`/`OutboxRelayScheduler`** — publican los eventos pendientes al topic exchange `redsegura.events` (at-least-once).
+- **`RabbitConfig`** — declara el exchange común durable (productor).
 - **`MgmtIpRedactor`** — enmascara `mgmtIp` server-side para el Auditor antes de serializar (ADR-11).
 - **`SecurityAuditLogger`** — log de seguridad (OWASP A09): denegaciones, auth fallida y mutaciones con actor.
 - **`ProblemAuthenticationEntryPoint`/`ProblemAccessDeniedHandler`** — 401/403 en `problem+json` (ADR-08).
@@ -160,13 +162,29 @@ Las dependencias van en el **POM padre** (heredadas por todos los servicios Java
 Boot **desactiva** métricas/tracing en tests por defecto; los tests usan `@AutoConfigureObservability`
 (en producción están activos sin esa anotación).
 
+**Hito 4e — eventos vía transactional outbox (2026-07-14):** implementa RN11/ADR-04/RNF-E4 y el
+catálogo de eventos §3.3/§4.1.
+
+- **Outbox (`outbox_events`, Flyway V3):** cada alta/edición/baja escribe el evento `asset.*` en la
+  **misma transacción** que la mutación (`OutboxWriter`); no hay evento sin commit ni doble escritura
+  BD↔broker. El `payload` es el sobre (envelope) completo ya serializado.
+- **Sobre común (§3.3):** `eventId`, `eventType` (= routing key), `version` `1.0.0`, `occurredAt`,
+  `traceId` (del MDC, RNF-16), `source`, `payload`. `asset.updated` añade `changedFields`.
+- **Relay (`OutboxRelay` + `OutboxRelayScheduler`):** publica los pendientes al topic exchange
+  `redsegura.events` (durable) con mensajes persistentes; semántica **at-least-once** (los consumidores
+  deduplican por `eventId`). Desactivable con `redsegura.outbox.relay.enabled=false`.
+
+`mvn verify` → **50 tests** (OutboxWriteIT: create/update/decommission escriben el evento correcto;
+OutboxRelayIT: publicación real a RabbitMQ con Testcontainers), cobertura ≥70%, 0 Checkstyle.
+*Refinamiento pendiente:* publisher confirms (marcar publicado solo tras ACK del broker).
+
 **Backlog de producción (deuda explícita, hito propio):**
 - **Seguridad JWT:** validar `issuer`/`audience` (hoy solo se valida la firma vía `jwk-set-uri`);
   wire de un `OAuth2TokenValidator` cuando se fije el realm de Keycloak.
 - **Observabilidad — exportadores:** activar el exportador OTLP a Jaeger y el scrape de Prometheus
   por entorno (Docker Compose / k8s) cuando exista el stack; extraer `logback-spring.xml` a un módulo
   commons al scaffoldear el segundo servicio Java.
-- **Hito 4 (resto):** eventos vía outbox (RN11, 4e); bulk import (4f); Pact de eventos `asset.*`.
+- **Hito 4 (resto):** bulk import (4f); Pact del contrato de eventos `asset.*`; publisher confirms.
 - **Robustez BD (menor):** CHECK constraints de enums/`rack_unit`, índices en `loc_site`/`loc_rack`.
 - **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`), soporte **IPv6** en `mgmtIp`.
 

@@ -24,5 +24,8 @@ public abstract class AbstractIntegrationTest {
     registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
     registry.add("spring.datasource.username", POSTGRES::getUsername);
     registry.add("spring.datasource.password", POSTGRES::getPassword);
+    // Por defecto se desactiva el relay del outbox (no requiere RabbitMQ); los tests de mensajería
+    // que lo necesitan lo invocan manualmente contra un broker de Testcontainers.
+    registry.add("redsegura.outbox.relay.enabled", () -> "false");
   }
 }
