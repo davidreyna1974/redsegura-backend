@@ -1,5 +1,7 @@
 package com.redsegura.assetinventory.config;
 
+import com.redsegura.assetinventory.web.ProblemAccessDeniedHandler;
+import com.redsegura.assetinventory.web.ProblemAuthenticationEntryPoint;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +31,11 @@ public class SecurityConfig {
   private static final String AUD = "AUD";
 
   @Bean
-  SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+  SecurityFilterChain filterChain(
+      HttpSecurity http,
+      ProblemAuthenticationEntryPoint authenticationEntryPoint,
+      ProblemAccessDeniedHandler accessDeniedHandler)
+      throws Exception {
     http.csrf(csrf -> csrf.disable())
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
@@ -44,9 +50,17 @@ public class SecurityConfig {
                     .hasAuthority(ADM)
                     .anyRequest()
                     .authenticated())
+        // 401/403 en application/problem+json (ADR-08) + traza de seguridad (ADR-11).
+        .exceptionHandling(
+            ex ->
+                ex.authenticationEntryPoint(authenticationEntryPoint)
+                    .accessDeniedHandler(accessDeniedHandler))
         .oauth2ResourceServer(
             oauth ->
-                oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                oauth
+                    .authenticationEntryPoint(authenticationEntryPoint)
+                    .accessDeniedHandler(accessDeniedHandler)
+                    .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
     return http.build();
   }
 
