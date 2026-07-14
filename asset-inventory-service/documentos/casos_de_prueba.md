@@ -24,6 +24,8 @@
 | HLTH-01 | `GET /health/liveness` | FLOW | Proceso vivo | público | 200 `{status: UP}` sin autenticación | ✅ |
 | HLTH-02 | `GET /health/readiness` | FLOW | Dependencias OK (PostgreSQL) | público | 200 cuando la BD responde | ✅ |
 | HLTH-03 | `GET /health/readiness` | ERR | BD caída | público | 503 `{status: DOWN}` — no enruta tráfico | ✅ |
+| OBS-01 | `/actuator/prometheus` | FLOW | Registro Prometheus cableado (RNF-15) | interno | `scrape()` produce métricas (`jvm_memory_used_bytes`) | ✅ |
+| OBS-02 | (logs) | FLOW | Logs estructurados JSON con `traceId` (RNF-16/17) | interno | Línea JSON con `service` + `traceId`, sin datos sensibles | ✅ |
 
 ## Registrar dispositivo — `POST /devices`
 

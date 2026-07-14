@@ -145,11 +145,27 @@ entregado contra el mandato "capacidad productiva real". Defectos corregidos:
 `mvn verify` → **44 tests** (RBAC-01/02/03, CYBER-02, SEC-01/02 en problem+json, SEC-06 auditoría),
 cobertura ≥70%, 0 Checkstyle.
 
+**Hito obs — observabilidad de 3 pilares (2026-07-13, transversal):** implementa A7/RNF-15/16/17.
+Las dependencias van en el **POM padre** (heredadas por todos los servicios Java):
+
+- **Métricas (RNF-15):** `micrometer-registry-prometheus` alimenta `/actuator/prometheus` (antes
+  expuesto pero sin registro → métrica muerta). Tags con el nombre del servicio.
+- **Trazas (RNF-16):** `micrometer-tracing-bridge-otel` genera y propaga `traceId`/`spanId` (W3C) y
+  los inyecta en el MDC de los logs. El exportador OTLP a Jaeger se añade por entorno (sin colector,
+  sin tráfico de red). Muestreo `TRACING_SAMPLE_PROBABILITY` (1.0 en dev).
+- **Logs JSON (RNF-17):** `logstash-logback-encoder` + `logback-spring.xml` → cada línea es JSON con
+  timestamp/nivel/logger/hilo/mensaje/MDC (incluye `traceId`) + `service`. Sin datos sensibles.
+
+`mvn verify` → **46 tests** (OBS-01 scrape Prometheus, OBS-02 logs JSON con `traceId`). Nota: Spring
+Boot **desactiva** métricas/tracing en tests por defecto; los tests usan `@AutoConfigureObservability`
+(en producción están activos sin esa anotación).
+
 **Backlog de producción (deuda explícita, hito propio):**
 - **Seguridad JWT:** validar `issuer`/`audience` (hoy solo se valida la firma vía `jwk-set-uri`);
   wire de un `OAuth2TokenValidator` cuando se fije el realm de Keycloak.
-- **Observabilidad (RNF-15/16/17):** falta `micrometer-registry-prometheus` (endpoint expuesto pero
-  sin métricas) y **logging estructurado JSON** (RNF-17). Candidato a hito transversal en POM padre.
+- **Observabilidad — exportadores:** activar el exportador OTLP a Jaeger y el scrape de Prometheus
+  por entorno (Docker Compose / k8s) cuando exista el stack; extraer `logback-spring.xml` a un módulo
+  commons al scaffoldear el segundo servicio Java.
 - **Hito 4 (resto):** eventos vía outbox (RN11, 4e); bulk import (4f); Pact de eventos `asset.*`.
 - **Robustez BD (menor):** CHECK constraints de enums/`rack_unit`, índices en `loc_site`/`loc_rack`.
 - **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`), soporte **IPv6** en `mgmtIp`.
