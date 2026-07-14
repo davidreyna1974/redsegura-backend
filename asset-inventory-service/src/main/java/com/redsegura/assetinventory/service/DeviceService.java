@@ -139,11 +139,14 @@ public class DeviceService {
       String site,
       String rack,
       Criticality criticality,
+      String vendor,
+      String model,
       DeviceStatus status,
       Pageable pageable) {
     Specification<com.redsegura.assetinventory.domain.Device> spec =
         DeviceSpecifications.withFilters(
-            hostname, mgmtIp, serialNumber, deviceType, site, rack, criticality, status);
+            hostname, mgmtIp, serialNumber, deviceType, site, rack, criticality, vendor, model,
+            status);
     return repository.findAll(spec, pageable).map(mapper::toResponse);
   }
 

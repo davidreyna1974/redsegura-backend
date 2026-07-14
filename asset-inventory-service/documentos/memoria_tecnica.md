@@ -111,9 +111,31 @@ misma clave + mismo cuerpo → replay; misma clave + **cuerpo distinto** → **4
 *Deuda restante:* TTL de expiración de claves y persistencia de la respuesta HTTP completa (hoy se
 re-lee el dispositivo).
 
-**Pendiente (Hito 4, resto):** redacción de `mgmtIp` (RN10), publicación de eventos vía outbox
-(RN11), bulk import, y Pact de eventos `asset.*`. Nota: 401/403 aún no salen en `problem+json`
-(requiere entry point/handler propios) — refinamiento.
+**Hito 4c-ter — auditoría de capacidad productiva (2026-07-13):** revisión completa del código ya
+entregado contra el mandato "capacidad productiva real". Defectos corregidos:
+
+1. **Filtros `fabricante`/`modelo` ignorados** — el controlador los recibía (están en el contrato)
+   pero no los pasaba al servicio; filtrar por vendor/model no hacía nada. Ahora se propagan y se
+   implementan como búsqueda parcial insensible a mayúsculas.
+2. **Readiness falso** — `/health/readiness` siempre devolvía `UP`; ahora **verifica PostgreSQL**
+   (`Connection.isValid`) y devuelve **503 `DOWN`** si la BD no responde (para que Kubernetes deje
+   de enrutar tráfico).
+3. **`size` de paginación sin tope** → acotado a `MAX_PAGE_SIZE=100` (evita DoS por página enorme).
+4. **`sort` sin validar** (campo arbitrario → 500 con fuga interna) → whitelist de campos ordenables;
+   campo no permitido → **400 `INVALID_REQUEST`** en `problem+json` (RNF-09).
+5. **`LIKE` sin escapar** `%`/`_` en búsquedas parciales → se escapan los comodines del input.
+
+`mvn verify` → **40 tests**, cobertura ≥70%, 0 Checkstyle.
+
+**Backlog de producción (deuda explícita, hito propio):**
+- **Seguridad JWT:** validar `issuer`/`audience` (hoy solo se valida la firma vía `jwk-set-uri`);
+  wire de un `OAuth2TokenValidator` cuando se fije el realm de Keycloak.
+- **Observabilidad (RNF-15/16/17):** falta `micrometer-registry-prometheus` (endpoint expuesto pero
+  sin métricas) y **logging estructurado JSON** (RNF-17). Candidato a hito transversal en POM padre.
+- **Hito 4 (resto):** redacción de `mgmtIp` (RN10) + 401/403 en `problem+json` (4d); eventos vía
+  outbox (RN11, 4e); bulk import (4f); Pact de eventos `asset.*`.
+- **Robustez BD (menor):** CHECK constraints de enums/`rack_unit`, índices en `loc_site`/`loc_rack`.
+- **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`), soporte **IPv6** en `mgmtIp`.
 
 **Hito 3b — contract-first estricto (ADR-05):** se cableó **openapi-generator**. El contrato genera
 las interfaces de API (`DevicesApi`) y los DTOs; el `DeviceController` **implementa** la interfaz
@@ -130,11 +152,20 @@ LINE 86.7% (excluyendo generado), 0 Checkstyle.
 
 > Nota de entorno: docker-java usa por defecto una API de Docker que Docker Desktop reciente
 > rechaza; se fija `-Dapi.version` en Surefire (POM padre). Testcontainers subido a 1.20.4.
+> Además, la JVM de ejecución es Java 24 (el proyecto compila a Java 21): el Byte Buddy de Mockito
+> 5.11 no soporta Java 24 → se fija `-Dnet.bytebuddy.experimental=true` en Surefire (POM padre) para
+> los tests con `@MockBean`.
 
 ## 8. Bugs y retos durante el desarrollo
 | ID | Síntoma | Causa raíz | Fix | ¿Lección? |
 |---|---|---|---|---|
-| — | (sin código todavía) | — | — | — |
+| B1 | Filtrar por `fabricante`/`modelo` no devolvía nada | El controlador recibía los parámetros pero no los pasaba al servicio | Propagar `vendor`/`model` a `search`/`DeviceSpecifications` | Sí: un parámetro del contrato sin cablear falla en silencio; test por filtro |
+| B2 | Readiness `UP` con BD caída | El probe devolvía `UP` fijo, sin verificar dependencias | `Connection.isValid` → 503 `DOWN` si la BD no responde | Sí: readiness debe reflejar dependencias reales |
+| B3 | `sort` con campo inválido → 500 con fuga interna | Campo pasado directo a Spring Data (`PropertyReferenceException`) | Whitelist de campos → 400 `INVALID_REQUEST` | Sí: validar entrada libre antes de la capa de datos (RNF-09) |
+| B4 | `size` de página sin límite | Sin tope en `toPageable` | Acotar a `MAX_PAGE_SIZE=100` | Sí: paginación sin tope = vector de DoS |
+| B5 | Búsqueda parcial: `%`/`_` del input actuaban como comodín | `LIKE` sin escapar | Escapar comodines + `ESCAPE` | Menor |
+| E1 | `ddl-auto=validate` fallaba: `bpchar` vs `varchar` | Migración con `CHAR(64)` vs `String`→`VARCHAR` | Migración a `VARCHAR(64)` | Sí (ver memoria de entorno) |
+| E2 | Tests con `@MockBean` fallaban: "Java 24 not supported by Byte Buddy" | JVM de ejecución Java 24; Mockito 5.11 soporta ≤23 | `-Dnet.bytebuddy.experimental=true` en Surefire | Sí (ver memoria de entorno) |
 
 ## 9. Estándares y buenas prácticas aplicadas
 Contract-first (ADR-05), MapStruct (ADR-06), auditoría (ADR-07), RFC 7807 (ADR-08),

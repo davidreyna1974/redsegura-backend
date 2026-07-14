@@ -89,6 +89,10 @@
                     <configuration>
                         <systemPropertyVariables>
                             <api.version>${docker.api.version}</api.version>
+                            <!-- La JVM de ejecucion puede ser mas nueva (Java 24+) que la que
+                                 soporta el Byte Buddy de Mockito; el flag experimental lo habilita
+                                 para poder mockear (p. ej. @MockBean). El proyecto compila a Java 21. -->
+                            <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
                         </systemPropertyVariables>
                         <!-- Los tests de integracion (*IT, Testcontainers) corren junto a los
                              unitarios en la fase test, para que cuenten en la cobertura. -->

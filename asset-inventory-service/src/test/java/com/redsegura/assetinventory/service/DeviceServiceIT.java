@@ -128,12 +128,16 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     assertThat(service.findById(c.body().getId()).body().getStatus()).isEqualTo(DeviceStatus.BAJA);
     assertThat(
             service
-                .search(null, null, null, null, null, null, null, null, PageRequest.of(0, 20))
+                .search(
+                    null, null, null, null, null, null, null, null, null, null,
+                    PageRequest.of(0, 20))
                 .getContent())
         .isEmpty();
     assertThat(
             service
                 .search(
+                    null,
+                    null,
                     null,
                     null,
                     null,
@@ -153,11 +157,27 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     service.create(req("S2", "RT-EDGE", "10.0.0.2"), null);
 
     var page =
-        service.search("core", null, null, null, null, null, null, null, PageRequest.of(0, 20));
+        service.search(
+            "core", null, null, null, null, null, null, null, null, null, PageRequest.of(0, 20));
 
     assertThat(page.getContent()).hasSize(1);
     assertThat(page.getContent().get(0).getHostname()).isEqualTo("SW-CORE");
     assertThat(page.getTotalElements()).isEqualTo(1);
+  }
+
+  /** El filtro por fabricante (vendor) es parcial e insensible a mayúsculas. */
+  @Test
+  void search_filtersByVendor() {
+    service.create(req("S1", "SW1", "10.0.0.1"), null); // vendor Cisco (del helper req)
+    service.create(
+        req("S2", "SW2", "10.0.0.2").vendor("Juniper"), null);
+
+    var page =
+        service.search(
+            null, null, null, null, null, null, null, "cisco", null, null, PageRequest.of(0, 20));
+
+    assertThat(page.getContent()).hasSize(1);
+    assertThat(page.getContent().get(0).getSerialNumber()).isEqualTo("S1");
   }
 
   /** RN9: un POST con la misma Idempotency-Key y el mismo cuerpo devuelve el original y no duplica. */
