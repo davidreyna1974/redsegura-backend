@@ -4,6 +4,7 @@ import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
 import com.redsegura.assetinventory.exception.IdempotencyKeyConflictException;
+import com.redsegura.assetinventory.exception.InvalidRequestException;
 import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
@@ -41,6 +42,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   ProblemDetail handleDecommissioned(DeviceDecommissionedException ex) {
     return problem(
         HttpStatus.CONFLICT, "Dispositivo dado de baja", ex.getMessage(), "DEVICE_DECOMMISSIONED");
+  }
+
+  /** Parámetro de petición inválido (p. ej. campo de ordenación no permitido) -> 400. */
+  @ExceptionHandler(InvalidRequestException.class)
+  ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
+    return problem(HttpStatus.BAD_REQUEST, "Petición inválida", ex.getMessage(), "INVALID_REQUEST");
   }
 
   /** RN9: reuso del Idempotency-Key con un cuerpo distinto -> 409. */

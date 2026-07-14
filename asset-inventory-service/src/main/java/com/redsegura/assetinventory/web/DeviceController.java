@@ -8,10 +8,12 @@ import com.redsegura.assetinventory.generated.model.DeviceStatus;
 import com.redsegura.assetinventory.generated.model.DeviceType;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
+import com.redsegura.assetinventory.exception.InvalidRequestException;
 import com.redsegura.assetinventory.generated.model.PageDevice;
 import com.redsegura.assetinventory.service.DeviceService;
 import com.redsegura.assetinventory.service.VersionedDevice;
 import java.net.URI;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,8 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
  * contrato por construcción (si el contrato cambia, esto deja de compilar hasta actualizarse).
  *
  * <p>El generador mapea a {@code /devices}; el {@code @RequestMapping("/api/v1")} de clase añade el
- * prefijo. Las cabeceras {@code If-Match}/{@code Idempotency-Key} se reciben pero su lógica
- * (concurrencia/idempotencia) se implementa en el hito transversal.
+ * prefijo. Las cabeceras {@code If-Match} (concurrencia optimista, ADR-09) e {@code Idempotency-Key}
+ * (deduplicación de altas, RN9) están implementadas.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -78,6 +80,8 @@ public class DeviceController implements DevicesApi {
             site,
             rack,
             toDomainCriticality(criticidad),
+            fabricante,
+            modelo,
             toDomainStatus(estado),
             toPageable(page, size, sort));
     return ResponseEntity.ok(toPageDevice(result));
@@ -122,18 +126,41 @@ public class DeviceController implements DevicesApi {
     }
   }
 
+  /** Tamaño de página máximo: acota el coste de una consulta (evita `size` sin límite → DoS). */
+  private static final int MAX_PAGE_SIZE = 100;
+
+  /** Campos permitidos para ordenar; un campo fuera de esta lista se rechaza con 400 (no 500). */
+  private static final Set<String> SORTABLE_FIELDS =
+      Set.of(
+          "hostname",
+          "mgmtIp",
+          "serialNumber",
+          "deviceType",
+          "criticality",
+          "status",
+          "vendor",
+          "model",
+          "createdAt",
+          "updatedAt");
+
   private static Pageable toPageable(Integer page, Integer size, String sort) {
-    int p = page == null ? 0 : page;
-    int s = size == null ? 20 : size;
+    int p = Math.max(0, page == null ? 0 : page);
+    int requested = size == null ? 20 : size;
+    int s = Math.min(MAX_PAGE_SIZE, Math.max(1, requested));
     if (sort == null || sort.isBlank()) {
       return PageRequest.of(p, s);
     }
     String[] parts = sort.split(",");
+    String field = parts[0].trim();
+    if (!SORTABLE_FIELDS.contains(field)) {
+      throw new InvalidRequestException(
+          "Campo de ordenación no permitido: '" + field + "'. Permitidos: " + SORTABLE_FIELDS);
+    }
     Sort.Direction dir =
-        parts.length > 1 && parts[1].equalsIgnoreCase("desc")
+        parts.length > 1 && parts[1].trim().equalsIgnoreCase("desc")
             ? Sort.Direction.DESC
             : Sort.Direction.ASC;
-    return PageRequest.of(p, s, Sort.by(dir, parts[0]));
+    return PageRequest.of(p, s, Sort.by(dir, field));
   }
 
   private static PageDevice toPageDevice(Page<Device> page) {

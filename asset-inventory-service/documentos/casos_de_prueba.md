@@ -21,9 +21,9 @@
 
 | ID | Unidad | Cat. | Descripción | Rol(es) | Resultado esperado | Estado |
 |---|---|---|---|---|---|---|
-| HLTH-01 | `GET /health/liveness` | FLOW | Proceso vivo | público | 200 `{status: UP}` sin autenticación | ⏳ |
-| HLTH-02 | `GET /health/readiness` | FLOW | Dependencias OK (PostgreSQL, RabbitMQ) | público | 200 cuando BD y broker responden | ⏳ |
-| HLTH-03 | `GET /health/readiness` | ERR | BD/broker caídos | público | 503 (no listo) — no enruta tráfico | ⏳ |
+| HLTH-01 | `GET /health/liveness` | FLOW | Proceso vivo | público | 200 `{status: UP}` sin autenticación | ✅ |
+| HLTH-02 | `GET /health/readiness` | FLOW | Dependencias OK (PostgreSQL) | público | 200 cuando la BD responde | ✅ |
+| HLTH-03 | `GET /health/readiness` | ERR | BD caída | público | 503 `{status: DOWN}` — no enruta tráfico | ✅ |
 
 ## Registrar dispositivo — `POST /devices`
 
@@ -48,16 +48,18 @@
 
 | ID | Unidad | Cat. | Descripción | Rol(es) | Resultado esperado | Estado |
 |---|---|---|---|---|---|---|
-| CRUD-02 | GET /devices | CRUD | Listado paginado | ADM, OPE, AUD | 200 sobre de paginación estándar | ⏳ |
-| BSRCH-01 | GET /devices | BSRCH | Filtro por `hostname` parcial | ADM | Coincidencias parciales | ⏳ |
-| BSRCH-02 | GET /devices | BSRCH | Filtro insensible a mayúsculas/acentos | ADM | `galon` encuentra `Galón` | ⏳ |
+| CRUD-02 | GET /devices | CRUD | Listado paginado | ADM, OPE, AUD | 200 sobre de paginación estándar | ✅ |
+| BSRCH-01 | GET /devices | BSRCH | Filtro por `hostname` parcial (insensible a mayúsculas) | ADM | Coincidencias parciales | ✅ |
+| BSRCH-02 | GET /devices | BSRCH | Filtro insensible a **acentos** | ADM | `galon` encuentra `Galón` | ⏳ (pendiente `unaccent`) |
 | BSRCH-03 | GET /devices | BSRCH | Filtros `deviceType`, `site`, `rack`, `criticidad`, `estado` | ADM | Resultados correctos (AND) | ⏳ |
+| BSRCH-05 | GET /devices | BSRCH | Filtro por `fabricante`/`modelo` (parcial, insensible) | ADM, OPE, AUD | Solo el fabricante buscado | ✅ |
 | BSRCH-04 | GET /devices | EMPTY | Búsqueda sin coincidencias | ADM | 200 lista vacía (distinto de "sin datos") | ⏳ |
 | EMPTY-01 | GET /devices | EMPTY | Inventario sin dispositivos | ADM | 200 lista vacía inicial | ⏳ |
-| FLOW-01 | GET /devices | FLOW | Excluye dados de baja por defecto (RN6) | ADM | No aparecen `BAJA` salvo `estado=BAJA` | ⏳ |
+| FLOW-01 | GET /devices | FLOW | Excluye dados de baja por defecto (RN6) | ADM | No aparecen `BAJA` salvo `estado=BAJA` | ✅ |
+| SORT-01 | GET /devices | VAL | `sort` con campo no permitido | AUD | **400** `INVALID_REQUEST` problem+json (no 500) | ✅ |
 | RBAC-01 | GET /devices | RBAC | Redacción de `mgmtIp` (RN10/ADR-11) | AUD | `mgmtIp` **enmascarada** (`10.0.0.***`) | ⏳ |
 | RBAC-02 | GET /devices | RBAC | `mgmtIp` en claro | ADM, OPE | `mgmtIp` completa | ⏳ |
-| VAL-07 | GET /devices | VAL | `size` > máximo (200) | ADM | Acotado o 400 | ⏳ |
+| VAL-07 | GET /devices | VAL | `size` > máximo (100) | ADM | Acotado a 100 (cap implementado; test HTTP pendiente) | ⏳ |
 
 ## Consultar — `GET /devices/{id}`
 

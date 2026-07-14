@@ -179,6 +179,45 @@ class DeviceControllerIT extends AbstractIntegrationTest {
         .andExpect(jsonPath("$.content[0].hostname", is("SW-CORE")));
   }
 
+  /** VAL/ERR: un campo de ordenación no permitido -> 400 problem+json (no 500). */
+  @Test
+  void list_withInvalidSortField_returns400() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/devices").with(auditor()).param("sort", "password,asc"))
+        .andExpect(status().isBadRequest())
+        .andExpect(header().string("Content-Type", "application/problem+json"))
+        .andExpect(jsonPath("$.code", is("INVALID_REQUEST")));
+  }
+
+  /** El filtro por fabricante llega hasta la consulta (antes se ignoraba en el controlador). */
+  @Test
+  void list_filtersByVendor() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"serialNumber\":\"S1\",\"hostname\":\"SW1\",\"mgmtIp\":\"10.0.0.1\","
+                        + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\",\"vendor\":\"Cisco\"}"))
+        .andExpect(status().isCreated());
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"serialNumber\":\"S2\",\"hostname\":\"SW2\",\"mgmtIp\":\"10.0.0.2\","
+                        + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\",\"vendor\":\"Juniper\"}"))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(get("/api/v1/devices").with(auditor()).param("fabricante", "cisco"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.totalElements", is(1)))
+        .andExpect(jsonPath("$.content[0].serialNumber", is("S1")));
+  }
+
   /** CRUD-06: baja lógica -> 204. */
   @Test
   void decommission_returns204() throws Exception {
