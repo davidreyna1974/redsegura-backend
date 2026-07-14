@@ -18,7 +18,7 @@ jobs:
       run:
         working-directory: config-backup-service
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Configurar Python 3.12
         uses: actions/setup-python@v5
