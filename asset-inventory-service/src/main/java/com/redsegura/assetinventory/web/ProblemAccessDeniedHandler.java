@@ -11,8 +11,9 @@ import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
 /**
- * Respuesta 403 en {@code application/problem+json} (ADR-08) cuando el usuario está autenticado pero
- * sin permiso para la operación (RBAC). Registra la denegación con su actor (OWASP A09/ADR-11).
+ * Respuesta 403 en {@code application/problem+json} (ADR-08) cuando el usuario está autenticado
+ * pero sin permiso para la operación (RBAC). Registra la denegación con su actor (OWASP
+ * A09/ADR-11).
  */
 @Component
 public class ProblemAccessDeniedHandler implements AccessDeniedHandler {

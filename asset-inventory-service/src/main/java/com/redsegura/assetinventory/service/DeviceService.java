@@ -21,7 +21,6 @@ import com.redsegura.assetinventory.messaging.OutboxWriter;
 import com.redsegura.assetinventory.messaging.RabbitConfig;
 import com.redsegura.assetinventory.repository.DeviceRepository;
 import com.redsegura.assetinventory.repository.IdempotencyRepository;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -81,7 +80,7 @@ public class DeviceService {
    *       reproducir silenciosamente un recurso que no corresponde a esta petición.
    * </ul>
    *
-   * La clave (con su hash y dispositivo) se guarda en la misma transacción que el alta.
+   * <p>La clave (con su hash y dispositivo) se guarda en la misma transacción que el alta.
    */
   @Transactional
   public VersionedDevice create(DeviceCreateRequest req, String idempotencyKey) {
@@ -153,7 +152,15 @@ public class DeviceService {
       Pageable pageable) {
     Specification<com.redsegura.assetinventory.domain.Device> spec =
         DeviceSpecifications.withFilters(
-            hostname, mgmtIp, serialNumber, deviceType, site, rack, criticality, vendor, model,
+            hostname,
+            mgmtIp,
+            serialNumber,
+            deviceType,
+            site,
+            rack,
+            criticality,
+            vendor,
+            model,
             status);
     return repository.findAll(spec, pageable).map(mapper::toResponse);
   }

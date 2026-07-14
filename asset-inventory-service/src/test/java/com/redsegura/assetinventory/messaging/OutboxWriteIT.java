@@ -23,7 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Transactional outbox (RN11/ADR-04): cada mutación escribe el evento asset.* correcto en la misma
- * transacción. Solo requiere PostgreSQL (la publicación a RabbitMQ se prueba en {@link OutboxRelayIT}).
+ * transacción. Solo requiere PostgreSQL (la publicación a RabbitMQ se prueba en {@link
+ * OutboxRelayIT}).
  */
 class OutboxWriteIT extends AbstractIntegrationTest {
 

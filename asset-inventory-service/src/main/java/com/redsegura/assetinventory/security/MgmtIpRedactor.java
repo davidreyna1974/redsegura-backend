@@ -31,7 +31,9 @@ public class MgmtIpRedactor {
     }
   }
 
-  /** Igual que {@link #maybeRedact(Device)} para cada elemento de una lista (evita re-evaluar rol). */
+  /**
+   * Igual que {@link #maybeRedact(Device)} para cada elemento de una lista (evita re-evaluar rol).
+   */
   public void maybeRedact(List<Device> devices) {
     if (devices != null && shouldRedact()) {
       devices.forEach(d -> d.setMgmtIp(mask(d.getMgmtIp())));

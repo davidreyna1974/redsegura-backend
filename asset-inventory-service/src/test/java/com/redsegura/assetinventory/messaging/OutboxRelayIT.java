@@ -28,8 +28,8 @@ import org.testcontainers.containers.RabbitMQContainer;
 
 /**
  * Relay del outbox (RN11/ADR-04) contra un RabbitMQ real (Testcontainers): un evento pendiente se
- * publica en el topic exchange y llega a una cola bindeada con {@code asset.*}, y queda marcado como
- * publicado. El scheduler está desactivado (base); el relay se invoca manualmente.
+ * publica en el topic exchange y llega a una cola bindeada con {@code asset.*}, y queda marcado
+ * como publicado. El scheduler está desactivado (base); el relay se invoca manualmente.
  */
 class OutboxRelayIT extends AbstractIntegrationTest {
 

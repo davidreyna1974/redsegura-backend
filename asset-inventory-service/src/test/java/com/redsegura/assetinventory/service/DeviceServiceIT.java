@@ -129,7 +129,16 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     assertThat(
             service
                 .search(
-                    null, null, null, null, null, null, null, null, null, null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
                     PageRequest.of(0, 20))
                 .getContent())
         .isEmpty();
@@ -169,8 +178,7 @@ class DeviceServiceIT extends AbstractIntegrationTest {
   @Test
   void search_filtersByVendor() {
     service.create(req("S1", "SW1", "10.0.0.1"), null); // vendor Cisco (del helper req)
-    service.create(
-        req("S2", "SW2", "10.0.0.2").vendor("Juniper"), null);
+    service.create(req("S2", "SW2", "10.0.0.2").vendor("Juniper"), null);
 
     var page =
         service.search(
@@ -180,7 +188,9 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     assertThat(page.getContent().get(0).getSerialNumber()).isEqualTo("S1");
   }
 
-  /** RN9: un POST con la misma Idempotency-Key y el mismo cuerpo devuelve el original y no duplica. */
+  /**
+   * RN9: un POST con la misma Idempotency-Key y el mismo cuerpo devuelve el original y no duplica.
+   */
   @Test
   void create_withSameIdempotencyKeyAndBody_isReplayed() {
     VersionedDevice first = service.create(req("S1", "SW1", "10.0.0.1"), "key-123");
@@ -193,7 +203,9 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     assertThat(repository.count()).isEqualTo(1);
   }
 
-  /** RN9: reuso de la misma Idempotency-Key con un cuerpo distinto -> 409 (no replay silencioso). */
+  /**
+   * RN9: reuso de la misma Idempotency-Key con un cuerpo distinto -> 409 (no replay silencioso).
+   */
   @Test
   void create_withSameIdempotencyKeyDifferentBody_throwsConflict() {
     service.create(req("S1", "SW1", "10.0.0.1"), "key-123");

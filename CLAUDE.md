@@ -56,12 +56,16 @@ Detalle de responsabilidad de cada uno: `proyecto_microservicios_redsegura.md` �
 El gatekeeper corre **por microservicio**, no de forma global sobre todo el
 monorepo (correría build/test de 10 servicios en cada cambio, sin sentido).
 
-**Servicios Java (Maven):**
-| Paso | Comando | Criterio de aprobación |
+**Servicios Java (Maven):** el gate completo es **`mvn -pl <servicio> -am clean verify`** — build +
+tests (Testcontainers) + cobertura (jacoco:check ≥ 70%) + lint/formato (spotless + checkstyle) están
+**ligados a la fase `verify`** en el POM padre, así que un solo comando lo verifica todo (y no se
+puede saltar el lint). Requiere **JDK 21** (toolchain; ver `toolchains.sample.xml`). Desglose:
+| Paso | Comando (opcional, desglosado) | Criterio de aprobación |
 |---|---|---|
-| 1. Build | `mvn -pl <servicio> -am clean package` | 0 errores |
-| 2. Tests | `mvn -pl <servicio> test` | 0 fallos |
-| 3. Lint | `mvn -pl <servicio> checkstyle:check spotless:check` | 0 errores |
+| Gate único | `mvn -pl <servicio> -am clean verify` | 0 errores/fallos, cobertura ≥ 70%, 0 lint |
+| Build | `mvn -pl <servicio> -am clean package` | 0 errores |
+| Tests | `mvn -pl <servicio> test` | 0 fallos |
+| Lint | `mvn -pl <servicio> spotless:check checkstyle:check` | 0 errores |
 | Cobertura | `mvn -pl <servicio> jacoco:report` | ≥ 70% statements |
 
 **Servicios Python (FastAPI):**

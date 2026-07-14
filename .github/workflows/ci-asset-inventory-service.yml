@@ -1,16 +1,32 @@
-# Gatekeeper de CI (ejemplo Java) — se activa por ruta al scaffoldear el servicio.
-# Requiere que asset-inventory-service esté registrado como <module> en el POM padre.
+# Gatekeeper de CI de asset-inventory-service. Se activa por ruta: solo corre cuando cambia el
+# código del servicio o la configuración de build/calidad compartida. Ejecuta el mismo gatekeeper
+# que en local (build + tests con Testcontainers + cobertura >= 70% + lint/formato).
 name: CI · asset-inventory-service
 
-# Esqueleto: MANUAL por ahora (workflow_dispatch). Al scaffoldear el servicio, cambiar a:
-#   on:
-#     push:      { paths: ["asset-inventory-service/**", "pom.xml"] }
-#     pull_request: { paths: ["asset-inventory-service/**", "pom.xml"] }
 on:
+  push:
+    branches: [develop, main]
+    paths:
+      - "asset-inventory-service/**"
+      - "pom.xml"
+      - "checkstyle-suppressions.xml"
+      - ".github/workflows/ci-asset-inventory-service.yml"
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "asset-inventory-service/**"
+      - "pom.xml"
+      - "checkstyle-suppressions.xml"
+      - ".github/workflows/ci-asset-inventory-service.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+# Cancela runs anteriores del mismo ref si llega uno nuevo (ahorra minutos de runner).
+concurrency:
+  group: ci-asset-inventory-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   gatekeeper:
@@ -18,6 +34,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # setup-java genera ~/.m2/toolchains.xml con el JDK 21 instalado, que satisface el
+      # maven-toolchains-plugin del POM padre (build reproducible en el JDK objetivo).
       - name: Configurar Java 21 (Temurin)
         uses: actions/setup-java@v4
         with:
@@ -25,19 +43,8 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Build
-        run: mvn -pl asset-inventory-service -am -B clean package
-
-      - name: Tests
-        run: mvn -pl asset-inventory-service -B test
-
-      - name: Lint y formato
-        run: mvn -pl asset-inventory-service -B checkstyle:check spotless:check
-
-      - name: Cobertura (>= 70%)
-        run: mvn -pl asset-inventory-service -B verify
-        # La regla de cobertura (jacoco:check, umbral 70%) está ligada a la fase verify.
-
-      # Nota: los tests de integración usan Testcontainers, que gestiona sus propios
-      # contenedores (PostgreSQL/RabbitMQ) usando el Docker del runner. No se requieren
-      # service containers.
+      # Gatekeeper único: build + tests (Testcontainers gestiona PostgreSQL/RabbitMQ con el Docker
+      # del runner) + cobertura (jacoco:check, umbral 70%) + lint/formato (spotless + checkstyle).
+      # Todo está ligado a la fase `verify` en el POM padre.
+      - name: Gatekeeper (build + tests + cobertura + lint)
+        run: mvn -pl asset-inventory-service -am -B clean verify

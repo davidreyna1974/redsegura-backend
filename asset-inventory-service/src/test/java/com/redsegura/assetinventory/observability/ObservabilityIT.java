@@ -34,8 +34,8 @@ class ObservabilityIT extends AbstractIntegrationTest {
 
   /**
    * OBS-01: el registro Prometheus está cableado y produce métricas en formato de scrape (RNF-15).
-   * Antes, {@code /actuator/prometheus} estaba expuesto pero sin registro (métrica muerta); ahora la
-   * dependencia {@code micrometer-registry-prometheus} lo alimenta.
+   * Antes, {@code /actuator/prometheus} estaba expuesto pero sin registro (métrica muerta); ahora
+   * la dependencia {@code micrometer-registry-prometheus} lo alimenta.
    */
   @Test
   void prometheusRegistry_producesMetrics() {

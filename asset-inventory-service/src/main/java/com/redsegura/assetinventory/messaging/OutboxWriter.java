@@ -18,9 +18,10 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
 /**
- * Construye el sobre (envelope) de los eventos {@code asset.*} (catálogo §3.3/§4.1) y lo persiste en
- * el outbox dentro de la transacción de negocio (RN11/ADR-04). No publica: de eso se encarga el
- * {@link OutboxRelay}. El {@code traceId} se toma del MDC (propagado por Micrometer Tracing, RNF-16).
+ * Construye el sobre (envelope) de los eventos {@code asset.*} (catálogo §3.3/§4.1) y lo persiste
+ * en el outbox dentro de la transacción de negocio (RN11/ADR-04). No publica: de eso se encarga el
+ * {@link OutboxRelay}. El {@code traceId} se toma del MDC (propagado por Micrometer Tracing,
+ * RNF-16).
  */
 @Component
 public class OutboxWriter {
@@ -38,8 +39,8 @@ public class OutboxWriter {
   }
 
   /**
-   * Registra un evento {@code asset.*} para el dispositivo dado. {@code changedFields} solo aplica a
-   * {@code asset.updated}; para el resto se pasa {@code null}.
+   * Registra un evento {@code asset.*} para el dispositivo dado. {@code changedFields} solo aplica
+   * a {@code asset.updated}; para el resto se pasa {@code null}.
    */
   public void record(String eventType, Device device, List<String> changedFields) {
     UUID eventId = UUID.randomUUID();
@@ -53,8 +54,7 @@ public class OutboxWriter {
     envelope.put("payload", payloadOf(device, changedFields));
 
     outboxRepository.save(
-        new OutboxEvent(
-            eventId, AGGREGATE_TYPE, device.getId(), eventType, serialize(envelope)));
+        new OutboxEvent(eventId, AGGREGATE_TYPE, device.getId(), eventType, serialize(envelope)));
   }
 
   private static Map<String, Object> payloadOf(Device device, List<String> changedFields) {
@@ -74,7 +74,9 @@ public class OutboxWriter {
     return payload;
   }
 
-  /** Une las partes no vacías de la ubicación en una cadena legible (p. ej. "MX-DC1 / B07 / U12"). */
+  /**
+   * Une las partes no vacías de la ubicación en una cadena legible (p. ej. "MX-DC1 / B07 / U12").
+   */
   private static String formatLocation(Location location) {
     if (location == null) {
       return null;
