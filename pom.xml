@@ -36,6 +36,7 @@
         <checkstyle.plugin.version>3.5.0</checkstyle.plugin.version>
         <checkstyle.version>10.18.2</checkstyle.version>
         <jacoco.version>0.8.12</jacoco.version>
+        <toolchains.plugin.version>3.2.0</toolchains.plugin.version>
 
         <!-- Mapeo entidad <-> DTO en tiempo de compilacion (ADR-06) -->
         <mapstruct.version>1.6.3</mapstruct.version>
@@ -89,10 +90,6 @@
                     <configuration>
                         <systemPropertyVariables>
                             <api.version>${docker.api.version}</api.version>
-                            <!-- La JVM de ejecucion puede ser mas nueva (Java 24+) que la que
-                                 soporta el Byte Buddy de Mockito; el flag experimental lo habilita
-                                 para poder mockear (p. ej. @MockBean). El proyecto compila a Java 21. -->
-                            <net.bytebuddy.experimental>true</net.bytebuddy.experimental>
                         </systemPropertyVariables>
                         <!-- Los tests de integracion (*IT, Testcontainers) corren junto a los
                              unitarios en la fase test, para que cuenten en la cobertura. -->
@@ -216,6 +213,31 @@
              (su configuración/umbral viven en pluginManagement); Spotless/Checkstyle se
              invocan como goals en el gatekeeper. -->
         <plugins>
+            <!-- Fija el JDK de compilacion/tests al target del proyecto (21), con independencia
+                 del JDK que lance a Maven (p. ej. el openjdk 24 que arrastra Homebrew). Exige el
+                 toolchain 'jdk 21' de ~/.m2/toolchains.xml; si falta, el build falla con un mensaje
+                 claro. Alinea el build local con CI (Temurin 21) y evita incompatibilidades de JDK
+                 (p. ej. Byte Buddy/Mockito con Java 24). -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-toolchains-plugin</artifactId>
+                <version>${toolchains.plugin.version}</version>
+                <configuration>
+                    <toolchains>
+                        <jdk>
+                            <version>21</version>
+                        </jdk>
+                    </toolchains>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>toolchain</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
