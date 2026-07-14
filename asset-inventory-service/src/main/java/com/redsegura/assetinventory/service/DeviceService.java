@@ -17,12 +17,16 @@ import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
 import com.redsegura.assetinventory.mapper.DeviceMapper;
+import com.redsegura.assetinventory.messaging.OutboxWriter;
+import com.redsegura.assetinventory.messaging.RabbitConfig;
 import com.redsegura.assetinventory.repository.DeviceRepository;
 import com.redsegura.assetinventory.repository.IdempotencyRepository;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HexFormat;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -47,18 +51,21 @@ public class DeviceService {
   private final DeviceMapper mapper;
   private final AuditorAware<String> auditorAware;
   private final ObjectMapper objectMapper;
+  private final OutboxWriter outboxWriter;
 
   public DeviceService(
       DeviceRepository repository,
       IdempotencyRepository idempotencyRepository,
       DeviceMapper mapper,
       AuditorAware<String> auditorAware,
-      ObjectMapper objectMapper) {
+      ObjectMapper objectMapper,
+      OutboxWriter outboxWriter) {
     this.repository = repository;
     this.idempotencyRepository = idempotencyRepository;
     this.mapper = mapper;
     this.auditorAware = auditorAware;
     this.objectMapper = objectMapper;
+    this.outboxWriter = outboxWriter;
   }
 
   /**
@@ -106,6 +113,7 @@ public class DeviceService {
     entity.setModel(req.getModel());
     entity.setLocation(toDomainLocation(req.getLocation()));
     VersionedDevice created = save(entity);
+    outboxWriter.record(RabbitConfig.ROUTING_ASSET_CREATED, created.body(), null);
     if (hasKey) {
       idempotencyRepository.saveAndFlush(
           new IdempotencyRecord(idempotencyKey, currentUser, requestHash, created.body().getId()));
@@ -188,7 +196,8 @@ public class DeviceService {
     var entity = getOrThrow(id);
     checkVersion(entity, expectedVersion);
     entity.decommission();
-    saveEntity(entity);
+    var saved = saveEntity(entity);
+    outboxWriter.record(RabbitConfig.ROUTING_ASSET_DECOMMISSIONED, mapper.toResponse(saved), null);
   }
 
   /**
@@ -212,31 +221,42 @@ public class DeviceService {
     if (entity.getStatus() == DeviceStatus.BAJA) {
       throw new DeviceDecommissionedException("No se puede editar un dispositivo dado de baja");
     }
+    List<String> changedFields = new ArrayList<>();
     if (hostname != null) {
       entity.setHostname(hostname);
+      changedFields.add("hostname");
     }
     if (mgmtIp != null) {
       entity.setMgmtIp(mgmtIp);
+      changedFields.add("mgmtIp");
     }
     if (deviceType != null) {
       entity.setDeviceType(toDomainType(deviceType));
+      changedFields.add("deviceType");
     }
     if (vendor != null) {
       entity.setVendor(vendor);
+      changedFields.add("vendor");
     }
     if (model != null) {
       entity.setModel(model);
+      changedFields.add("model");
     }
     if (assetTag != null) {
       entity.setAssetTag(assetTag);
+      changedFields.add("assetTag");
     }
     if (location != null) {
       entity.setLocation(toDomainLocation(location));
+      changedFields.add("location");
     }
     if (criticality != null) {
       entity.setCriticality(toDomainCriticality(criticality));
+      changedFields.add("criticality");
     }
-    return save(entity);
+    VersionedDevice updated = save(entity);
+    outboxWriter.record(RabbitConfig.ROUTING_ASSET_UPDATED, updated.body(), changedFields);
+    return updated;
   }
 
   /** RN8: el If-Match debe coincidir con la versión actual del recurso. */

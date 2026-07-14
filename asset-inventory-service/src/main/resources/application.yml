@@ -19,6 +19,13 @@ spring:
   flyway:
     enabled: true
 
+  # Message broker (RabbitMQ) para publicar eventos asset.* vía outbox (RN11).
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
   # OAuth2 Resource Server (RNF-03): valida el JWT de Keycloak. El decoder es perezoso (no
   # descarga los JWKs al arrancar), por eso no requiere Keycloak vivo en los tests.
   security:
@@ -29,6 +36,13 @@ spring:
 
 server:
   port: 8081
+
+# Transactional outbox (RN11/ADR-04): el relay publica los eventos pendientes periódicamente.
+redsegura:
+  outbox:
+    relay:
+      enabled: ${OUTBOX_RELAY_ENABLED:true}
+      fixed-delay: ${OUTBOX_RELAY_FIXED_DELAY:2000}
 
 # Observabilidad (RNF-15..17). Los probes del contrato viven en /api/v1/health/*;
 # Actuator expone health + métricas Prometheus. El traceId/spanId (Micrometer Tracing) se
