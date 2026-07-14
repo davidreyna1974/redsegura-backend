@@ -30,8 +30,8 @@
 | ID | Unidad | Cat. | Descripción | Rol(es) | Resultado esperado | Estado |
 |---|---|---|---|---|---|---|
 | CRUD-01 | POST /devices | CRUD | Alta válida y consulta posterior | ADM | 201 + `Location` + `ETag`; aparece en GET | ⏳ |
-| SEC-01 | POST /devices | SEC | Alta con rol sin permiso | OPE, AUD | **403** (problem+json), validado en el servicio | ⏳ |
-| SEC-02 | POST /devices | SEC | Alta sin token / token inválido | — | **401** | ⏳ |
+| SEC-01 | POST /devices | SEC | Alta con rol sin permiso | OPE, AUD | **403** (problem+json, `ACCESS_DENIED`), validado en el servicio | ✅ |
+| SEC-02 | POST /devices | SEC | Alta sin token / token inválido | — | **401** (problem+json, `UNAUTHENTICATED`) | ✅ |
 | VAL-01 | POST /devices | VAL | Falta `serialNumber` | ADM | 422, sin crear | ⏳ |
 | VAL-02 | POST /devices | VAL | Falta `hostname`/`mgmtIp`/`deviceType`/`criticality` | ADM | 422 por cada requerido | ⏳ |
 | VAL-03 | POST /devices | VAL | `criticality` fuera de enum | ADM | 422 | ⏳ |
@@ -57,8 +57,8 @@
 | EMPTY-01 | GET /devices | EMPTY | Inventario sin dispositivos | ADM | 200 lista vacía inicial | ⏳ |
 | FLOW-01 | GET /devices | FLOW | Excluye dados de baja por defecto (RN6) | ADM | No aparecen `BAJA` salvo `estado=BAJA` | ✅ |
 | SORT-01 | GET /devices | VAL | `sort` con campo no permitido | AUD | **400** `INVALID_REQUEST` problem+json (no 500) | ✅ |
-| RBAC-01 | GET /devices | RBAC | Redacción de `mgmtIp` (RN10/ADR-11) | AUD | `mgmtIp` **enmascarada** (`10.0.0.***`) | ⏳ |
-| RBAC-02 | GET /devices | RBAC | `mgmtIp` en claro | ADM, OPE | `mgmtIp` completa | ⏳ |
+| RBAC-01 | GET /devices | RBAC | Redacción de `mgmtIp` (RN10/ADR-11) | AUD | `mgmtIp` **enmascarada** (`10.0.0.***`) | ✅ |
+| RBAC-02 | GET /devices | RBAC | `mgmtIp` en claro | ADM, OPE | `mgmtIp` completa | ✅ |
 | VAL-07 | GET /devices | VAL | `size` > máximo (100) | ADM | Acotado a 100 (cap implementado; test HTTP pendiente) | ⏳ |
 
 ## Consultar — `GET /devices/{id}`
@@ -67,7 +67,7 @@
 |---|---|---|---|---|---|---|
 | CRUD-03 | GET /devices/{id} | CRUD | Detalle existente | ADM, OPE, AUD | 200 + cabecera `ETag` | ⏳ |
 | ERR-01 | GET /devices/{id} | ERR | Id inexistente | ADM | **404** problem+json | ⏳ |
-| RBAC-03 | GET /devices/{id} | RBAC | `mgmtIp` enmascarada para Auditor | AUD | `10.0.0.***` | ⏳ |
+| RBAC-03 | GET /devices/{id} | RBAC | `mgmtIp` enmascarada para Auditor | AUD | `10.0.0.***` | ✅ |
 
 ## Editar — `PUT` / `PATCH /devices/{id}`
 
@@ -109,10 +109,10 @@
 | ERR-02 | (todas) | ERR | Formato de error uniforme (ADR-08) | — | `application/problem+json` con `type,title,status,detail,instance,traceId` | ⏳ |
 | ERR-03 | POST /devices | ERR | Cuerpo JSON malformado | ADM | 400 sin filtrar internos | ⏳ |
 | CYBER-01 | GET /devices | CYBER | Inyección en filtros (SQL/`unaccent`) | ADM | Consulta parametrizada; sin ejecución maliciosa | ⏳ |
-| CYBER-02 | GET /devices/{id} | CYBER | `mgmtIp` para Auditor **ausente en la respuesta**, no solo oculta | AUD | Valor real **no** viaja; solo el enmascarado (ADR-11) | ⏳ |
+| CYBER-02 | GET /devices/{id} | CYBER | `mgmtIp` para Auditor **ausente en la respuesta**, no solo oculta | AUD | Valor real **no** viaja; solo el enmascarado (ADR-11) | ✅ |
 | CYBER-03 | (errores) | CYBER | Ningún 4xx/5xx expone stack trace / nombres de tablas (RNF-09) | — | Mensaje genérico + `traceId` | ⏳ |
 | CYBER-04 | (escritura) | CYBER | Autorización validada server-side, no asumida del Gateway | AUD | 403 aunque el Gateway no filtrara | ⏳ |
-| SEC-06 | (denegaciones) | SEC | Acceso denegado y auth fallida se registran en log de seguridad (ADR-11) | AUD | Entrada `security` con actor/hora | ⏳ |
+| SEC-06 | (denegaciones) | SEC | Acceso denegado y auth fallida se registran en log de seguridad (ADR-11) | AUD | Entrada `security` con actor/hora (`event=access_denied`) | ✅ |
 
 ---
 

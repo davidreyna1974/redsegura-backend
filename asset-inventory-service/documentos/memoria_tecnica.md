@@ -35,7 +35,9 @@ Patrón `controller → service → repository` (estándares §3.1):
 - **`DeviceMapper`** (MapStruct) — entidad `Device` ↔ DTOs.
 - **`Device`** (entidad) — extiende una `@MappedSuperclass Auditable`; `@Version` para concurrencia.
 - **`OutboxPublisher`** — escribe el evento en la tabla outbox dentro de la transacción; un relay lo publica a RabbitMQ.
-- **`MgmtIpRedactor`** — enmascara `mgmtIp` según el rol (ADR-11).
+- **`MgmtIpRedactor`** — enmascara `mgmtIp` server-side para el Auditor antes de serializar (ADR-11).
+- **`SecurityAuditLogger`** — log de seguridad (OWASP A09): denegaciones, auth fallida y mutaciones con actor.
+- **`ProblemAuthenticationEntryPoint`/`ProblemAccessDeniedHandler`** — 401/403 en `problem+json` (ADR-08).
 - **`IdempotencyRecord`/`IdempotencyRepository`** — persisten `(Idempotency-Key, usuario)` → hash del cuerpo + dispositivo creado.
 - **`BulkImportJob`** — worker asíncrono de importación con resultado por dispositivo.
 
@@ -127,13 +129,28 @@ entregado contra el mandato "capacidad productiva real". Defectos corregidos:
 
 `mvn verify` → **40 tests**, cobertura ≥70%, 0 Checkstyle.
 
+**Hito 4d — redacción por rol + seguridad de datos (2026-07-13):** implementa RN10/ADR-11 y OWASP A09.
+
+- **Redacción de `mgmtIp` server-side (`MgmtIpRedactor`):** para el rol Auditor se enmascara el
+  último octeto (`10.0.0.11` → `10.0.0.***`) **antes** de serializar, en `GET /devices` y
+  `GET /devices/{id}`; Administrador y Operador la ven en claro. El valor real **no viaja** en la
+  respuesta (CYBER-02), no se limita a ocultarlo en el cliente.
+- **401/403 en `application/problem+json`:** `ProblemAuthenticationEntryPoint` (401
+  `UNAUTHENTICATED`) y `ProblemAccessDeniedHandler` (403 `ACCESS_DENIED`), registrados en la cadena
+  de seguridad (global y en el resource server para fallos de JWT).
+- **Log de auditoría de seguridad (`SecurityAuditLogger`, logger `SECURITY_AUDIT`):** registra
+  denegaciones (403), autenticaciones fallidas (401) y mutaciones (alta/edición/baja) con su actor;
+  **solo metadatos**, nunca `mgmtIp`/credenciales/secretos (RNF-17).
+
+`mvn verify` → **44 tests** (RBAC-01/02/03, CYBER-02, SEC-01/02 en problem+json, SEC-06 auditoría),
+cobertura ≥70%, 0 Checkstyle.
+
 **Backlog de producción (deuda explícita, hito propio):**
 - **Seguridad JWT:** validar `issuer`/`audience` (hoy solo se valida la firma vía `jwk-set-uri`);
   wire de un `OAuth2TokenValidator` cuando se fije el realm de Keycloak.
 - **Observabilidad (RNF-15/16/17):** falta `micrometer-registry-prometheus` (endpoint expuesto pero
   sin métricas) y **logging estructurado JSON** (RNF-17). Candidato a hito transversal en POM padre.
-- **Hito 4 (resto):** redacción de `mgmtIp` (RN10) + 401/403 en `problem+json` (4d); eventos vía
-  outbox (RN11, 4e); bulk import (4f); Pact de eventos `asset.*`.
+- **Hito 4 (resto):** eventos vía outbox (RN11, 4e); bulk import (4f); Pact de eventos `asset.*`.
 - **Robustez BD (menor):** CHECK constraints de enums/`rack_unit`, índices en `loc_site`/`loc_rack`.
 - **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`), soporte **IPv6** en `mgmtIp`.
 

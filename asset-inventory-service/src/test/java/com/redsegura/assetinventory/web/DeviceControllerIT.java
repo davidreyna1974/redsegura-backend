@@ -1,5 +1,6 @@
 package com.redsegura.assetinventory.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -17,8 +18,11 @@ import com.redsegura.assetinventory.repository.IdempotencyRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.web.servlet.MockMvc;
@@ -26,6 +30,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /** Tests de extremo a extremo del controlador (stack completo + seguridad + PostgreSQL real). */
 @AutoConfigureMockMvc
+@ExtendWith(OutputCaptureExtension.class)
 class DeviceControllerIT extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
@@ -41,6 +46,10 @@ class DeviceControllerIT extends AbstractIntegrationTest {
 
   private static RequestPostProcessor admin() {
     return jwt().authorities(new SimpleGrantedAuthority("ADM"));
+  }
+
+  private static RequestPostProcessor operator() {
+    return jwt().authorities(new SimpleGrantedAuthority("OPE"));
   }
 
   private static RequestPostProcessor auditor() {
@@ -79,7 +88,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
         .andExpect(jsonPath("$.hostname", is("SW1")));
   }
 
-  /** SEC-01: alta con rol sin permiso (Auditor) -> 403. */
+  /** SEC-01: alta con rol sin permiso (Auditor) -> 403 problem+json. */
   @Test
   void create_asAuditor_forbidden() throws Exception {
     mockMvc
@@ -88,10 +97,12 @@ class DeviceControllerIT extends AbstractIntegrationTest {
                 .with(auditor())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body("S1", "SW1", "10.0.0.1")))
-        .andExpect(status().isForbidden());
+        .andExpect(status().isForbidden())
+        .andExpect(header().string("Content-Type", "application/problem+json"))
+        .andExpect(jsonPath("$.code", is("ACCESS_DENIED")));
   }
 
-  /** SEC-02: alta sin token -> 401. */
+  /** SEC-02: alta sin token -> 401 problem+json. */
   @Test
   void create_unauthenticated_returns401() throws Exception {
     mockMvc
@@ -99,7 +110,75 @@ class DeviceControllerIT extends AbstractIntegrationTest {
             post("/api/v1/devices")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body("S1", "SW1", "10.0.0.1")))
-        .andExpect(status().isUnauthorized());
+        .andExpect(status().isUnauthorized())
+        .andExpect(header().string("Content-Type", "application/problem+json"))
+        .andExpect(jsonPath("$.code", is("UNAUTHENTICATED")));
+  }
+
+  /** SEC-06: una denegación (403) deja traza en el log de seguridad con su actor (ADR-11). */
+  @Test
+  void accessDenied_isAudited(CapturedOutput output) throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(auditor())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("S1", "SW1", "10.0.0.1")))
+        .andExpect(status().isForbidden());
+
+    assertThat(output).contains("event=access_denied").contains("outcome=denied");
+  }
+
+  /** RBAC-01: listado como Auditor -> mgmtIp enmascarada (RN10/ADR-11). */
+  @Test
+  void list_asAuditor_masksMgmtIp() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("S1", "SW1", "10.0.0.1")))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(get("/api/v1/devices").with(auditor()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].mgmtIp", is("10.0.0.***")));
+  }
+
+  /** RBAC-02: listado como Operador -> mgmtIp en claro. */
+  @Test
+  void list_asOperator_showsMgmtIpClear() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body("S1", "SW1", "10.0.0.1")))
+        .andExpect(status().isCreated());
+
+    mockMvc
+        .perform(get("/api/v1/devices").with(operator()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].mgmtIp", is("10.0.0.1")));
+  }
+
+  /** RBAC-03/CYBER-02: detalle como Auditor -> mgmtIp enmascarada; el valor real no viaja. */
+  @Test
+  void getById_asAuditor_masksMgmtIp() throws Exception {
+    String id = createAndGetId();
+
+    String response =
+        mockMvc
+            .perform(get("/api/v1/devices/{id}", id).with(auditor()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.mgmtIp", is("10.0.0.***")))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    // CYBER-02: el último octeto real no está presente en ninguna parte de la respuesta.
+    assertThat(response).doesNotContain("10.0.0.1");
   }
 
   /** VAL-01/ERR-02: falta serialNumber -> 422 en formato problem+json. */

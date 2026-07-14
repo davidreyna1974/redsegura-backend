@@ -7,6 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.redsegura.assetinventory.config.SecurityConfig;
+import com.redsegura.assetinventory.security.SecurityAuditLogger;
+import com.redsegura.assetinventory.web.ProblemAccessDeniedHandler;
+import com.redsegura.assetinventory.web.ProblemAuthenticationEntryPoint;
 import java.sql.Connection;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
@@ -18,7 +21,12 @@ import org.springframework.test.web.servlet.MockMvc;
 
 /** Casos HLTH-01/02/03: probes sin autenticación; readiness refleja el estado real de la BD. */
 @WebMvcTest(HealthController.class)
-@Import(SecurityConfig.class)
+@Import({
+  SecurityConfig.class,
+  ProblemAuthenticationEntryPoint.class,
+  ProblemAccessDeniedHandler.class,
+  SecurityAuditLogger.class
+})
 class HealthControllerTest {
 
   @Autowired private MockMvc mockMvc;

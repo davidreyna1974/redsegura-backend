@@ -10,6 +10,8 @@ import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
 import com.redsegura.assetinventory.exception.InvalidRequestException;
 import com.redsegura.assetinventory.generated.model.PageDevice;
+import com.redsegura.assetinventory.security.MgmtIpRedactor;
+import com.redsegura.assetinventory.security.SecurityAuditLogger;
 import com.redsegura.assetinventory.service.DeviceService;
 import com.redsegura.assetinventory.service.VersionedDevice;
 import java.net.URI;
@@ -36,15 +38,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class DeviceController implements DevicesApi {
 
   private final DeviceService service;
+  private final MgmtIpRedactor redactor;
+  private final SecurityAuditLogger auditLogger;
 
-  public DeviceController(DeviceService service) {
+  public DeviceController(
+      DeviceService service, MgmtIpRedactor redactor, SecurityAuditLogger auditLogger) {
     this.service = service;
+    this.redactor = redactor;
+    this.auditLogger = auditLogger;
   }
 
   @Override
   public ResponseEntity<Device> createDevice(
       DeviceCreateRequest deviceCreateRequest, String idempotencyKey) {
     VersionedDevice vd = service.create(deviceCreateRequest, idempotencyKey);
+    auditLogger.mutation("CREATE_DEVICE", vd.body().getId());
     return ResponseEntity.created(URI.create("/api/v1/devices/" + vd.body().getId()))
         .eTag(etag(vd.version()))
         .body(vd.body());
@@ -53,6 +61,7 @@ public class DeviceController implements DevicesApi {
   @Override
   public ResponseEntity<Device> getDevice(UUID deviceId) {
     VersionedDevice vd = service.findById(deviceId);
+    redactor.maybeRedact(vd.body());
     return ResponseEntity.ok().eTag(etag(vd.version())).body(vd.body());
   }
 
@@ -84,6 +93,7 @@ public class DeviceController implements DevicesApi {
             modelo,
             toDomainStatus(estado),
             toPageable(page, size, sort));
+    redactor.maybeRedact(result.getContent());
     return ResponseEntity.ok(toPageDevice(result));
   }
 
@@ -91,6 +101,7 @@ public class DeviceController implements DevicesApi {
   public ResponseEntity<Device> replaceDevice(
       UUID deviceId, String ifMatch, DeviceUpdateFull deviceUpdateFull) {
     VersionedDevice vd = service.replace(deviceId, parseIfMatch(ifMatch), deviceUpdateFull);
+    auditLogger.mutation("REPLACE_DEVICE", vd.body().getId());
     return ResponseEntity.ok().eTag(etag(vd.version())).body(vd.body());
   }
 
@@ -98,12 +109,14 @@ public class DeviceController implements DevicesApi {
   public ResponseEntity<Device> updateDevice(
       UUID deviceId, String ifMatch, DeviceUpdateRequest deviceUpdateRequest) {
     VersionedDevice vd = service.update(deviceId, parseIfMatch(ifMatch), deviceUpdateRequest);
+    auditLogger.mutation("UPDATE_DEVICE", vd.body().getId());
     return ResponseEntity.ok().eTag(etag(vd.version())).body(vd.body());
   }
 
   @Override
   public ResponseEntity<Void> decommissionDevice(UUID deviceId, String ifMatch) {
     service.decommission(deviceId, parseIfMatch(ifMatch));
+    auditLogger.mutation("DECOMMISSION_DEVICE", deviceId);
     return ResponseEntity.noContent().build();
   }
 
