@@ -8,7 +8,15 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 
 ## [No publicado]
 
-### `asset-inventory-service` — Añadido (implementación, **98 tests, QA R1.1 certificado**, cobertura ≥ 70 %)
+### `asset-inventory-service` — Corregido
+- **`PUT /devices/{id}` ahora es reemplazo completo (RFC 9110)** — `HALLAZGO-LIVE-01`. Antes delegaba
+  en la ruta de merge de PATCH y no nulificaba los campos omitidos, impidiendo conmutar un dispositivo
+  dual-stack a solo-IPv6. Se separa la semántica con un flag `fullReplace` en `DeviceService.applyUpdate`
+  (PUT nulifica opcionales omitidos y mantiene la invariante RF-05a → 422 si quedaría sin dirección; PATCH
+  conserva merge). +2 tests de regresión (`CRUD-04b`/`CRUD-04c`). Detectado por la **verificación en vivo
+  de los 10 endpoints** (curl/Postman sobre Docker Compose, 10/10 ✅).
+
+### `asset-inventory-service` — Añadido (implementación, **100 tests, QA R1.1 certificado**, cobertura ≥ 70 %)
 - **Scaffolding contract-first** (ADR-05): openapi-generator produce las interfaces de API
   (`DevicesApi`/`BulkApi`/`HealthApi`) y los DTOs; los controladores **implementan** la interfaz
   → el código cumple el contrato por construcción.
@@ -34,6 +42,12 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
   verificado por `AssetEventContractIT` (happy/edge/sad); sobre de evento `version` 1.1.0.
 - **Pruebas de aceptación BDD** (Cucumber, Gherkin en español) como base de la **UAT**.
 - **Certificación QA de 4 fases** (R1 + re-certificación R1.1); reporte consolidado en `management`.
+- **Entorno de desarrollo local** (`docker-compose.dev.yml`): PostgreSQL + RabbitMQ + **Keycloak
+  sembrado** (realm `redsegura`, usuarios ADM/OPE/AUD) + el servicio empaquetado, para probarlo vía
+  Postman/curl con JWT reales. **Colección Postman** (`deploy/postman/`) con ejemplos de request y
+  respuestas esperadas, y **guía paso a paso** (`GUIA_PRUEBAS_POSTMAN.md`).
+- **Verificación en vivo de los 10 endpoints** sobre ese entorno (10/10 ✅); reporte en
+  `management/documentos/qa/verificacion_endpoints_asset-inventory.md`.
 
 ### Transversal (POM padre / infraestructura) — Añadido
 - **Observabilidad de 3 pilares** heredada por todos los servicios Java (RNF-15/16/17):

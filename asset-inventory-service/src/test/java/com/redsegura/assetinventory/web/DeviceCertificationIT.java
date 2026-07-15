@@ -1,6 +1,7 @@
 package com.redsegura.assetinventory.web;
 
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -99,6 +100,46 @@ class DeviceCertificationIT extends AbstractIntegrationTest {
         .andExpect(header().string("ETag", "\"1\""))
         .andExpect(jsonPath("$.hostname", is("SW1-PUT")))
         .andExpect(jsonPath("$.managementIpv4.address", is("10.0.0.50")));
+  }
+
+  // ---- CRUD-04b (regresión): PUT es reemplazo completo — nulifica campos omitidos (RFC 9110) ----
+  @Test
+  void replace_isFullReplacement_clearsOmittedFields() throws Exception {
+    // Alta con IPv4; luego PUT enviando SOLO IPv6 -> el IPv4 debe quedar en null (dual-stack,
+    // RF-05a).
+    String id = createDevice("S1", "SW1", "10.0.0.1");
+
+    mockMvc
+        .perform(
+            put("/api/v1/devices/{id}", id)
+                .with(admin())
+                .header("If-Match", "\"0\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"hostname":"SW1-V6","managementIpv6":{"address":"2001:db8::1","prefixLength":64},\
+                    "deviceType":"ROUTER","criticality":"BAJA"}"""))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.managementIpv6.address", is("2001:db8::1")))
+        .andExpect(jsonPath("$.managementIpv4").value(nullValue()));
+  }
+
+  // ---- CRUD-04c (regresión): PUT que dejaría el dispositivo sin ninguna dirección -> 422 ----
+  @Test
+  void replace_withNoManagementAddress_returns422() throws Exception {
+    String id = createDevice("S1", "SW1", "10.0.0.1");
+
+    mockMvc
+        .perform(
+            put("/api/v1/devices/{id}", id)
+                .with(admin())
+                .header("If-Match", "\"0\"")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    """
+                    {"hostname":"SW1-X","deviceType":"ROUTER","criticality":"BAJA"}"""))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code", is("ADDRESS_INVALID")));
   }
 
   // ---- SEC-03 / SEC-04: RBAC de edición y baja ----

@@ -4,8 +4,17 @@
 > Memoria de "qué se hizo y por qué". Referencias: [`propuesta_modulo.md`](propuesta_modulo.md),
 > [`casos_de_prueba.md`](casos_de_prueba.md), [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 98 tests, cobertura ≥ 70 %, CI
-activo · **Última actualización:** 2026-07-14
+**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 100 tests, cobertura ≥ 70 %, CI
+activo · **Última actualización:** 2026-07-15
+
+> **Verificación en vivo de endpoints (2026-07-15):** los 10 endpoints probados por HTTP real
+> (curl/Postman) contra el entorno Docker Compose → 10/10 ✅. La pasada detectó y corrigió
+> `HALLAZGO-LIVE-01`: `PUT /devices/{id}` no cumplía reemplazo completo (RFC 9110) — delegaba en la
+> ruta de merge (PATCH) y no nulificaba los campos omitidos, por lo que no se podía conmutar un
+> dispositivo dual-stack a solo-IPv6. Corregido con un flag `fullReplace` en `applyUpdate`
+> (mantiene la invariante RF-05a: al menos una dirección → 422 si no) + 2 tests de regresión
+> (`CRUD-04b`/`CRUD-04c`). Blast radius **local**, contrato sin cambios. Detalle:
+> [`../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md`](../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md).
 
 ## 1. Contexto y justificación
 `asset-inventory-service` mantiene el **inventario único de activos de red** — la **fuente de
@@ -280,7 +289,7 @@ fuga de internos (RNF-09); Flyway; inyección por constructor.
 ## 10. Cumplimiento y validación (definición de "done") — ✅ QA R1 certificada (2026-07-14)
 ```
 [x] Todos los casos de prueba en ✅ PASS (casos_de_prueba.md — 70/73 PASS, 2 N/A, 1 diferido BSRCH-02).
-[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 98 tests.
+[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 100 tests (98 + 2 regresión PUT).
 [x] Verificación por rol/condición ejecutada y documentada (ADM/OPE/AUD).
 [x] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción de direcciones).
 [~] Gobernanza Spectral en verde. **Pact (eventos asset.*): pendiente** hasta que exista el primer consumidor.
