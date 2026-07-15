@@ -27,8 +27,10 @@ vive en el repositorio umbrella `management`:
 | `reporting-service` | B | Python | 34–35 | Reportes ejecutivos en PDF |
 | `telemetry-collector-service` | B | Python | 36–37 | Telemetría SNMP |
 
-> Estado actual: **Fundación** — contratos OpenAPI de Fase A definidos; ningún servicio
-> implementado todavía.
+> Estado actual: **Fase A en curso.** `asset-inventory-service` **implementado** (CRUD + búsqueda +
+> RBAC + ETag/If-Match + idempotencia + redacción por rol + seguridad + observabilidad + eventos
+> outbox + importación masiva; 57 tests, cobertura ≥ 70 %, **CI activo y gateando `main`**). Resto de
+> servicios de Fase A sin iniciar. Contratos OpenAPI de Fase A definidos.
 
 ## 🛠️ Stack
 

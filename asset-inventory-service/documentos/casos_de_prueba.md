@@ -4,7 +4,9 @@
 > "done"** mientras haya casos aplicables sin `✅ PASS`. Contrato de referencia:
 > [`../openapi.yaml`](../openapi.yaml). Reglas: propuesta de módulo §5 (RN1..RN11).
 
-**Módulo:** asset-inventory-service · **Ronda:** R1 · **Fecha:** 2026-07-12 · **Versión de código:** (pre-código)
+**Módulo:** asset-inventory-service · **Ronda:** R1 (implementación) · **Fecha:** 2026-07-12 ·
+**Última actualización:** 2026-07-14 · **Versión de código:** implementado en `develop` (57 tests
+en verde); la certificación formal de 4 fases se ejecutará sobre una versión congelada.
 
 **Estados:** `✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `⚠️ ABIERTO` · `N/A`.
 **Roles:** ADM=Administrador · OPE=Operador · AUD=Auditor.

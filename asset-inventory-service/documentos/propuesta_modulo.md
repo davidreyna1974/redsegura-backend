@@ -1,8 +1,11 @@
 # Propuesta de módulo — asset-inventory-service
 
-**Estado:** propuesta · **Fecha:** 2026-07-12 · **Fase:** A · **Lenguaje:** Java 21 / Spring Boot
+**Estado:** implementada (planificación cumplida) · **Fecha:** 2026-07-12 · **Fase:** A ·
+**Lenguaje:** Java 21 / Spring Boot
 
-> Planificación previa a codificar. Contrato de referencia: [`../openapi.yaml`](../openapi.yaml).
+> Planificación previa a codificar (documento congelado). El módulo ya está **implementado**; el
+> estado vivo y las decisiones de implementación viven en
+> [`memoria_tecnica.md`](memoria_tecnica.md). Contrato: [`../openapi.yaml`](../openapi.yaml).
 > Contexto: memoria técnica global y estándares de desarrollo (repo `management`).
 
 ## 1. Objetivo del módulo
