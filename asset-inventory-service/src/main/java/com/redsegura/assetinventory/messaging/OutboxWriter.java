@@ -28,7 +28,8 @@ public class OutboxWriter {
 
   private static final String AGGREGATE_TYPE = "Device";
   private static final String SOURCE = "asset-inventory-service";
-  private static final String SCHEMA_VERSION = "1.0.0";
+  // 1.1.0: payload dual-stack (managementIpv4/managementIpv6, RF-05a).
+  private static final String SCHEMA_VERSION = "1.1.0";
 
   private final OutboxRepository outboxRepository;
   private final ObjectMapper objectMapper;

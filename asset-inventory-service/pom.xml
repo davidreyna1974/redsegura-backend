@@ -96,6 +96,13 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Validación de los eventos asset.* contra su JSON Schema (conformidad de contrato). -->
+        <dependency>
+            <groupId>com.networknt</groupId>
+            <artifactId>json-schema-validator</artifactId>
+            <version>1.5.5</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
