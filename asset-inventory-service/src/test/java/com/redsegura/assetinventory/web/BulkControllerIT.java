@@ -53,7 +53,7 @@ class BulkControllerIT extends AbstractIntegrationTest {
 
   private static String device(String serial, String hostname, String ip) {
     return """
-        {"serialNumber":"%s","hostname":"%s","mgmtIp":"%s","deviceType":"SWITCH","criticality":"ALTA"}
+        {"serialNumber":"%s","hostname":"%s","managementIpv4":{"address":"%s","prefixLength":24},"deviceType":"SWITCH","criticality":"ALTA"}
         """
         .formatted(serial, hostname, ip);
   }

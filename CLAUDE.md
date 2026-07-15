@@ -287,24 +287,23 @@ ETag/If-Match) y **gobernados en CI con Spectral** (`.spectral.yaml`, ADR-12); d
 ambos repos; repos publicados en GitHub (`redsegura-backend`,
 `redsegura-management`) con branch protection y esqueleto de CI.
 
-**`asset-inventory-service` — implementado (57 tests, cobertura ≥ 70 %, CI activo):** contract-first
+**`asset-inventory-service` — implementado (65 tests, cobertura ≥ 70 %, CI activo):** contract-first
 con openapi-generator (ADR-05); CRUD + búsqueda/filtros; RBAC por rol validado en el servicio;
-`ETag`/`If-Match` (ADR-09); idempotencia acotada por usuario + hash de cuerpo (RN9); redacción de
-`mgmtIp` por rol server-side (ADR-11) + 401/403 en `problem+json` + log de auditoría de seguridad
-(OWASP A09); observabilidad de 3 pilares (métricas Prometheus, trazas, logs JSON — POM padre,
-RNF-15/16/17); eventos `asset.*` vía **transactional outbox** a RabbitMQ (RN11/ADR-04); importación
-masiva asíncrona (RF-04). El gate único es `mvn verify` (build + tests Testcontainers + cobertura +
-lint, todo ligado a la fase `verify`); el CI corre en push/PR y es **status check requerido** en `main`.
+`ETag`/`If-Match` (ADR-09); idempotencia acotada por usuario + hash de cuerpo (RN9); **direccionamiento
+de gestión dual-stack IPv4/IPv6** (RF-05a/ADR-13: `managementIpv4`/`managementIpv6` con CIDR + gateway,
+canonicalización IPv6 RFC 5952); redacción de direcciones por rol server-side (ADR-11) + 401/403 en
+`problem+json` + log de auditoría de seguridad (OWASP A09); observabilidad de 3 pilares (métricas
+Prometheus, trazas, logs JSON — POM padre, RNF-15/16/17); eventos `asset.*` vía **transactional
+outbox** a RabbitMQ (RN11/ADR-04); importación masiva asíncrona (RF-04). El gate único es `mvn verify`
+(build + tests Testcontainers + cobertura + lint, todo ligado a la fase `verify`); el CI corre en
+push/PR y es **status check requerido** en `main`.
 
 **Próximos pasos (en orden):**
-1. `asset-inventory-service`: **RF-05a — direccionamiento dual-stack IPv4/IPv6** (ADR-13). Contrato
-   y especificación **ya documentados**; pendiente la implementación (modelo dual-stack +
-   canonicalización IPv6 + redacción por familia + tests).
-2. `asset-inventory-service`: **certificación QA de 4 fases** (versión congelada) y Pact (cuando
+1. `asset-inventory-service`: **certificación QA de 4 fases** (versión congelada) y Pact (cuando
    exista el primer consumidor).
-3. Resto de servicios de Fase A: `config-backup-service`, `compliance-audit-service`,
+2. Resto de servicios de Fase A: `config-backup-service`, `compliance-audit-service`,
    `alerting-service`, `notification-service`.
-4. Golden path de extremo a extremo en Docker Compose.
+3. Golden path de extremo a extremo en Docker Compose.
 
 > **Deuda de producción registrada** (memoria técnica del módulo): validación `issuer`/`audience`
 > del JWT; exportadores de observabilidad por entorno (OTLP→Jaeger, scrape Prometheus) + extraer

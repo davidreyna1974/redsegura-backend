@@ -43,7 +43,12 @@ public final class DeviceSpecifications {
             cb.like(cb.lower(root.get("hostname")), containsPattern(hostname), LIKE_ESCAPE));
       }
       if (mgmtIp != null && !mgmtIp.isBlank()) {
-        predicates.add(cb.equal(root.get("mgmtIp"), mgmtIp));
+        // Coincidencia por dirección de gestión IPv4 o IPv6 (RF-05a). El valor ya viene
+        // canonicalizado desde el servicio para igualar la forma almacenada.
+        predicates.add(
+            cb.or(
+                cb.equal(root.get("managementIpv4").get("address"), mgmtIp),
+                cb.equal(root.get("managementIpv6").get("address"), mgmtIp)));
       }
       if (serialNumber != null && !serialNumber.isBlank()) {
         predicates.add(cb.equal(root.get("serialNumber"), serialNumber));

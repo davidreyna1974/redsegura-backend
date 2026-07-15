@@ -8,7 +8,8 @@ import org.junit.jupiter.api.Test;
 class DeviceTest {
 
   private static Device newDevice() {
-    Device d = new Device("FCW-1", "SW1-CORE", "10.0.0.11", DeviceType.SWITCH, Criticality.ALTA);
+    Device d = new Device("FCW-1", "SW1-CORE", DeviceType.SWITCH, Criticality.ALTA);
+    d.setManagementIpv4(new ManagementAddress("10.0.0.11", 24, "10.0.0.1"));
     d.setAssetTag("A-100");
     d.setVendor("Cisco");
     d.setModel("Catalyst 9300");
@@ -22,7 +23,8 @@ class DeviceTest {
 
     assertThat(d.getSerialNumber()).isEqualTo("FCW-1");
     assertThat(d.getHostname()).isEqualTo("SW1-CORE");
-    assertThat(d.getMgmtIp()).isEqualTo("10.0.0.11");
+    assertThat(d.getManagementIpv4().getAddress()).isEqualTo("10.0.0.11");
+    assertThat(d.getManagementIpv4().getPrefixLength()).isEqualTo(24);
     assertThat(d.getDeviceType()).isEqualTo(DeviceType.SWITCH);
     assertThat(d.getCriticality()).isEqualTo(Criticality.ALTA);
     assertThat(d.getAssetTag()).isEqualTo("A-100");
@@ -47,13 +49,13 @@ class DeviceTest {
     Device d = newDevice();
 
     d.setHostname("SW1-EDGE");
-    d.setMgmtIp("10.0.0.20");
+    d.setManagementIpv4(new ManagementAddress("10.0.0.20", 24, null));
     d.setDeviceType(DeviceType.ROUTER);
     d.setCriticality(Criticality.MEDIA);
     d.setStatus(DeviceStatus.ACTIVO);
 
     assertThat(d.getHostname()).isEqualTo("SW1-EDGE");
-    assertThat(d.getMgmtIp()).isEqualTo("10.0.0.20");
+    assertThat(d.getManagementIpv4().getAddress()).isEqualTo("10.0.0.20");
     assertThat(d.getDeviceType()).isEqualTo(DeviceType.ROUTER);
     assertThat(d.getCriticality()).isEqualTo(Criticality.MEDIA);
   }

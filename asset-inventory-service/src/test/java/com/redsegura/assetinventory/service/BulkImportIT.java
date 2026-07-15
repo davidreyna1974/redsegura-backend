@@ -8,6 +8,7 @@ import com.redsegura.assetinventory.domain.JobStatus;
 import com.redsegura.assetinventory.generated.model.Criticality;
 import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
 import com.redsegura.assetinventory.generated.model.DeviceType;
+import com.redsegura.assetinventory.generated.model.Ipv4Address;
 import com.redsegura.assetinventory.repository.DeviceRepository;
 import com.redsegura.assetinventory.repository.ImportJobRepository;
 import com.redsegura.assetinventory.repository.ImportJobResultRepository;
@@ -40,7 +41,8 @@ class BulkImportIT extends AbstractIntegrationTest {
   }
 
   private static DeviceCreateRequest req(String serial, String hostname, String ip) {
-    return new DeviceCreateRequest(serial, hostname, ip, DeviceType.SWITCH, Criticality.ALTA);
+    return new DeviceCreateRequest(serial, hostname, DeviceType.SWITCH, Criticality.ALTA)
+        .managementIpv4(new Ipv4Address().address(ip).prefixLength(24));
   }
 
   @Test

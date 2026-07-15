@@ -61,7 +61,14 @@ public class OutboxWriter {
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("deviceId", device.getId().toString());
     payload.put("hostname", device.getHostname());
-    payload.put("mgmtIp", device.getMgmtIp());
+    // Direcciones de gestión dual-stack (RF-05a); se omite la familia ausente. Van en claro: los
+    // consumidores internos las necesitan (la redacción por rol es solo de la API HTTP).
+    if (device.getManagementIpv4() != null) {
+      payload.put("managementIpv4", device.getManagementIpv4());
+    }
+    if (device.getManagementIpv6() != null) {
+      payload.put("managementIpv6", device.getManagementIpv6());
+    }
     payload.put("vendor", device.getVendor());
     payload.put("model", device.getModel());
     payload.put("location", formatLocation(device.getLocation()));

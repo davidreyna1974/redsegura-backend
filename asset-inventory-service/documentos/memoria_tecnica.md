@@ -24,7 +24,7 @@ existen. Expone el inventario por API REST y publica eventos de dominio ante cad
 | **Bloqueo optimista** (`@Version`) expuesto como **ETag/If-Match** | Sin control de concurrencia | Evita *lost updates*; contrato HTTP estándar (ADR-09) |
 | **Transactional outbox** | Publicar directo | Consistencia BD↔broker (ADR-04) |
 | **JPA Auditing** (`created/updated_at/by`) | Auditoría manual | Patrón único auto-poblado desde el JWT (ADR-07) |
-| **RFC 7807** / probes / redacción `mgmtIp` | Propietario | Estándares de industria (ADR-08/10/11) |
+| **RFC 7807** / probes / redacción de direcciones | Propietario | Estándares de industria (ADR-08/10/11) |
 | **Location embebida** `{site,room,row,rack,rackUnit}` | Recursos Site/Rack aparte | DCIM suficiente para MVP; recursos separados → backlog |
 | **Flyway** para el esquema | Cambios manuales | Migraciones versionadas (estándares §11) |
 
@@ -32,13 +32,14 @@ existen. Expone el inventario por API REST y publica eventos de dominio ante cad
 Patrón `controller → service → repository` (estándares §3.1):
 - **`DeviceController`** — implementa la interfaz generada del `openapi.yaml`; filtro JWT + autorización por rol.
 - **`DeviceService`** (`@Transactional`) — reglas de negocio (RN1..RN11), soft delete, unicidad, publicación de eventos.
-- **`DeviceRepository`** (JPA) — persistencia; índices únicos en `serialNumber`, `hostname`, `mgmtIp`.
+- **`DeviceRepository`** (JPA) — persistencia; índices únicos en `serialNumber`, `hostname`, `managementIpv4`, `managementIpv6`.
 - **`DeviceMapper`** (MapStruct) — entidad `Device` ↔ DTOs.
 - **`Device`** (entidad) — extiende una `@MappedSuperclass Auditable`; `@Version` para concurrencia.
 - **`OutboxWriter`** — escribe el evento `asset.*` (sobre completo) en `outbox_events` dentro de la transacción de negocio.
 - **`OutboxRelay`/`OutboxRelayScheduler`** — publican los eventos pendientes al topic exchange `redsegura.events` (at-least-once).
 - **`RabbitConfig`** — declara el exchange común durable (productor).
-- **`MgmtIpRedactor`** — enmascara `mgmtIp` server-side para el Auditor antes de serializar (ADR-11).
+- **`MgmtIpRedactor`** — enmascara las direcciones de gestión (IPv4/IPv6) server-side para el Auditor (ADR-11/RF-05a).
+- **`IpAddressNormalizer`** — valida familia y canonicaliza IPv6 (RFC 5952, Guava) para unicidad real (RF-05a).
 - **`SecurityAuditLogger`** — log de seguridad (OWASP A09): denegaciones, auth fallida y mutaciones con actor.
 - **`ProblemAuthenticationEntryPoint`/`ProblemAccessDeniedHandler`** — 401/403 en `problem+json` (ADR-08).
 - **`IdempotencyRecord`/`IdempotencyRepository`** — persisten `(Idempotency-Key, usuario)` → hash del cuerpo + dispositivo creado.
@@ -62,12 +63,15 @@ Patrón `controller → service → repository` (estándares §3.1):
   replay del original; misma clave con cuerpo distinto → 409 (evita replay de un recurso ajeno).
 - **Transactional outbox (RN11):** el evento se escribe en la tabla outbox en la **misma** transacción
   que la mutación; un proceso relay lo publica → si la transacción no confirma, no hay evento.
-- **Redacción `mgmtIp` (RN10):** para Auditor se enmascara en el servidor **antes** de serializar
-  (el valor real nunca viaja); ADM/OPE lo ven completo.
+- **Redacción de direcciones de gestión (RN10/RF-05a):** para Auditor se enmascara la porción de host
+  de IPv4/IPv6 (y su gateway) en el servidor **antes** de serializar (el valor real nunca viaja);
+  ADM/OPE las ven completas.
+- **Direccionamiento dual-stack (RF-05a):** el dispositivo lleva IPv4 y/o IPv6 (CIDR + gateway); IPv6
+  canonicalizada (RFC 5952) para unicidad real.
 
 ## 6. Seguridad / RBAC del módulo
 - **Escritura** (POST/PUT/PATCH/DELETE, bulk) → **ADM**. **Lectura** → ADM, OPE, AUD. Probes → público.
-- **Redacción por rol:** `mgmtIp` enmascarada para Auditor (server-side, ADR-11).
+- **Redacción por rol:** direcciones de gestión (IPv4/IPv6) enmascaradas para Auditor (server-side, ADR-11/RF-05a).
 - **Log de auditoría de seguridad:** accesos denegados (403), auth fallida (401) y mutaciones con actor.
 - Autorización validada **en el servicio** (no se asume filtrado del Gateway).
 
@@ -80,7 +84,7 @@ Cobertura JaCoCo: LINE 93.5% · INSTRUCTION 95.5% · BRANCH 71.4%  (umbral 70% c
 Checkstyle: 0 violaciones · Spotless: OK
 ```
 Suites: `DeviceTest` (dominio, sin BD), `DeviceRepositoryIT` (integración con **PostgreSQL real**
-vía Testcontainers + Flyway: auditoría, versión, unicidad de serial/hostname/mgmtIp),
+vía Testcontainers + Flyway: auditoría, versión, unicidad de serial/hostname/managementIpv4/managementIpv6),
 `HealthControllerTest`, `AssetInventoryApplicationTests` (arranque de contexto).
 
 **Hito 3 — web + servicio (2026-07-13):** `mvn -pl asset-inventory-service verify` → BUILD SUCCESS.
@@ -198,19 +202,30 @@ OutboxRelayIT: publicación real a RabbitMQ con Testcontainers), cobertura ≥70
 `mvn verify` → **57 tests** (BulkImportIT: aislamiento de duplicados; BulkControllerIT: 202→COMPLETED
 con polling, RBAC 403, 422 lote vacío, 404 job, replay idempotente), cobertura ≥70%, 0 Checkstyle.
 
+**Hito RF-05a — direccionamiento dual-stack IPv4/IPv6 (2026-07-14, ADR-13):** reemplaza el único
+`mgmtIp` (string IPv4) por `managementIpv4` y/o `managementIpv6`, cada uno con dirección +
+`prefixLength` (CIDR) + `gateway` (estilo NetBox `primary_ip4`/`primary_ip6`).
+
+- **Modelo:** embebido `ManagementAddress` (una clase, dos embebidos con overrides de columna);
+  migración **V5** (columnas por familia, unicidad por dirección, CHECK "al menos una").
+- **Validación/canonicalización (`IpAddressNormalizer`, Guava `InetAddresses`, sin DNS):** valida la
+  familia y canonicaliza IPv6 (RFC 5952) antes de persistir → la **unicidad** es real (dos formas
+  textuales de la misma IPv6 colisionan). Formato inválido / familia equivocada / ninguna dirección →
+  422 `ADDRESS_INVALID`. "Al menos una" reforzado en servicio y por CHECK en BD.
+- **Redacción por familia (`MgmtIpRedactor`):** enmascara la porción de host de ambas familias y de
+  su gateway para el Auditor (IPv4 `10.0.0.***`, IPv6 `2001:db8:acad:1::***`).
+- **Búsqueda:** el filtro `mgmtIp` coincide en IPv4 o IPv6; el término se canonicaliza para igualar
+  la forma almacenada. **Eventos:** payload `asset.*` dual-stack (evento `version` 1.1.0).
+
+`mvn verify` → **65 tests** (+8: IPv6 canónica, dual-stack, sin dirección→422, familia equivocada,
+unicidad IPv6 por forma textual, redacción IPv6), cobertura ≥70%, 0 Checkstyle. Contrato regenerado.
+
 **Backlog de producción (deuda explícita, hito propio):**
 - **Seguridad JWT:** validar `issuer`/`audience` (hoy solo se valida la firma vía `jwk-set-uri`);
   wire de un `OAuth2TokenValidator` cuando se fije el realm de Keycloak.
 - **Observabilidad — exportadores:** activar el exportador OTLP a Jaeger y el scrape de Prometheus
   por entorno (Docker Compose / k8s) cuando exista el stack; extraer `logback-spring.xml` a un módulo
   commons al scaffoldear el segundo servicio Java.
-- **RF-05a — direccionamiento dual-stack IPv4/IPv6 (ADR-13):** **contrato y especificación
-  documentados**; pendiente la implementación. Reemplaza `mgmtIp` (string IPv4) por `managementIpv4`
-  y/o `managementIpv6` (dirección + `prefixLength` CIDR + `gateway`), al estilo NetBox. Requiere:
-  modelo/entidad dual-stack (Flyway V5), canonicalización IPv6 (RFC 5952) para unicidad real,
-  validación por familia (`java.net.InetAddress` → 422), redacción por familia (host enmascarado
-  según prefijo), filtro de búsqueda por ambas familias, y ajuste del payload de eventos `asset.*`
-  (→ `version` 1.1.0). Regenerar DTOs desde el contrato.
 - **Mensajería:** publisher confirms (marcar publicado tras ACK); Pact del contrato de eventos `asset.*`.
 - **Robustez BD (menor):** CHECK constraints de enums/`rack_unit`, índices en `loc_site`/`loc_rack`.
 - **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`).
@@ -258,7 +273,7 @@ fuga de internos (RNF-09); Flyway; inyección por constructor.
 [ ] Todos los casos de prueba en ✅ PASS (casos_de_prueba.md — 43 casos).
 [ ] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 %.
 [ ] Verificación por rol/condición ejecutada y documentada (ADM/OPE/AUD).
-[ ] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción mgmtIp).
+[ ] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción de direcciones).
 [ ] Contratos verificados con Pact (eventos asset.*) y gobernanza Spectral en verde.
 [ ] Memoria global actualizada si hubo decisiones transversales.
 ```

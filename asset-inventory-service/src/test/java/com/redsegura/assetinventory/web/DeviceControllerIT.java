@@ -58,7 +58,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
 
   private static String body(String serial, String hostname, String ip) {
     return """
-        {"serialNumber":"%s","hostname":"%s","mgmtIp":"%s","deviceType":"SWITCH","criticality":"ALTA"}
+        {"serialNumber":"%s","hostname":"%s","managementIpv4":{"address":"%s","prefixLength":24},"deviceType":"SWITCH","criticality":"ALTA"}
         """
         .formatted(serial, hostname, ip);
   }
@@ -143,7 +143,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
     mockMvc
         .perform(get("/api/v1/devices").with(auditor()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[0].mgmtIp", is("10.0.0.***")));
+        .andExpect(jsonPath("$.content[0].managementIpv4.address", is("10.0.0.***")));
   }
 
   /** RBAC-02: listado como Operador -> mgmtIp en claro. */
@@ -160,7 +160,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
     mockMvc
         .perform(get("/api/v1/devices").with(operator()))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.content[0].mgmtIp", is("10.0.0.1")));
+        .andExpect(jsonPath("$.content[0].managementIpv4.address", is("10.0.0.1")));
   }
 
   /** RBAC-03/CYBER-02: detalle como Auditor -> mgmtIp enmascarada; el valor real no viaja. */
@@ -172,7 +172,7 @@ class DeviceControllerIT extends AbstractIntegrationTest {
         mockMvc
             .perform(get("/api/v1/devices/{id}", id).with(auditor()))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.mgmtIp", is("10.0.0.***")))
+            .andExpect(jsonPath("$.managementIpv4.address", is("10.0.0.***")))
             .andReturn()
             .getResponse()
             .getContentAsString();
@@ -181,11 +181,74 @@ class DeviceControllerIT extends AbstractIntegrationTest {
     assertThat(response).doesNotContain("10.0.0.1");
   }
 
+  /** IP-02: alta solo con IPv6 (no canónica) -> 201 y se devuelve canonicalizada (RFC 5952). */
+  @Test
+  void create_withOnlyIpv6_canonicalizes() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"serialNumber\":\"S1\",\"hostname\":\"SW1\",\"managementIpv6\":"
+                        + "{\"address\":\"2001:0DB8:0000:0000:0000:0000:0000:0011\",\"prefixLength\":64},"
+                        + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\"}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.managementIpv6.address", is("2001:db8::11")))
+        .andExpect(jsonPath("$.managementIpv4").doesNotExist());
+  }
+
+  /** IP-04: alta sin ninguna dirección de gestión -> 422 ADDRESS_INVALID. */
+  @Test
+  void create_withoutAnyAddress_returns422() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"serialNumber\":\"S1\",\"hostname\":\"SW1\","
+                        + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\"}"))
+        .andExpect(status().isUnprocessableEntity())
+        .andExpect(jsonPath("$.code", is("ADDRESS_INVALID")));
+  }
+
+  /** IP-07/RBAC: detalle como Auditor -> IPv6 con host enmascarado; valor real no viaja. */
+  @Test
+  void getById_asAuditor_masksIpv6() throws Exception {
+    String response =
+        mockMvc
+            .perform(
+                post("/api/v1/devices")
+                    .with(admin())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(
+                        "{\"serialNumber\":\"S1\",\"hostname\":\"SW1\",\"managementIpv6\":"
+                            + "{\"address\":\"2001:db8:acad:1::11\",\"prefixLength\":64},"
+                            + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\"}"))
+            .andExpect(status().isCreated())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    String id = objectMapper.readTree(response).get("id").asText();
+
+    String masked =
+        mockMvc
+            .perform(get("/api/v1/devices/{id}", id).with(auditor()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.managementIpv6.address", is("2001:db8:acad:1::***")))
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    assertThat(masked).doesNotContain("::11");
+  }
+
   /** VAL-01/ERR-02: falta serialNumber -> 422 en formato problem+json. */
   @Test
   void create_invalid_returns422Problem() throws Exception {
     String invalid =
-        "{\"hostname\":\"SW1\",\"mgmtIp\":\"10.0.0.1\",\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\"}";
+        "{\"hostname\":\"SW1\",\"managementIpv4\":{\"address\":\"10.0.0.1\",\"prefixLength\":24},"
+            + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\"}";
 
     mockMvc
         .perform(
@@ -277,7 +340,8 @@ class DeviceControllerIT extends AbstractIntegrationTest {
                 .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    "{\"serialNumber\":\"S1\",\"hostname\":\"SW1\",\"mgmtIp\":\"10.0.0.1\","
+                    "{\"serialNumber\":\"S1\",\"hostname\":\"SW1\",\"managementIpv4\":"
+                        + "{\"address\":\"10.0.0.1\",\"prefixLength\":24},"
                         + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\",\"vendor\":\"Cisco\"}"))
         .andExpect(status().isCreated());
     mockMvc
@@ -286,7 +350,8 @@ class DeviceControllerIT extends AbstractIntegrationTest {
                 .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    "{\"serialNumber\":\"S2\",\"hostname\":\"SW2\",\"mgmtIp\":\"10.0.0.2\","
+                    "{\"serialNumber\":\"S2\",\"hostname\":\"SW2\",\"managementIpv4\":"
+                        + "{\"address\":\"10.0.0.2\",\"prefixLength\":24},"
                         + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\",\"vendor\":\"Juniper\"}"))
         .andExpect(status().isCreated());
 

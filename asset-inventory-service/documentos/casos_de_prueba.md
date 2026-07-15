@@ -50,22 +50,22 @@ en verde); la certificación formal de 4 fases se ejecutará sobre una versión 
 | RN-04 | POST /devices | RN | Idempotencia: mismo `Idempotency-Key` **y mismo cuerpo** (RN9) | ADM | 2ª respuesta = 1ª; **no** crea duplicado | ✅ |
 | RN-04b | POST /devices | RN | Idempotencia: mismo `Idempotency-Key` con **cuerpo distinto** (RN9) | ADM | **409** `IDEMPOTENCY_KEY_CONFLICT`; no crea duplicado | ✅ |
 
-## Direccionamiento dual-stack — RF-05a (⏳ pendiente de implementar)
+## Direccionamiento dual-stack — RF-05a
 
-> Nota: al implementar RF-05a, los casos que hoy usan `mgmtIp` (VAL-05, RN-02, RBAC-01/02/03,
-> CYBER-02) se reexpresan contra `managementIpv4`/`managementIpv6`.
+> Los casos que antes usaban `mgmtIp` (VAL-05, RN-02, RBAC-01/02/03, CYBER-02) ya se expresan contra
+> `managementIpv4`/`managementIpv6`.
 
 | ID | Unidad | Cat. | Descripción | Rol(es) | Resultado esperado | Estado |
 |---|---|---|---|---|---|---|
-| IP-01 | POST /devices | RN | Alta solo con `managementIpv4` | ADM | 201; dispositivo con IPv4, sin IPv6 | ⏳ |
-| IP-02 | POST /devices | RN | Alta solo con `managementIpv6` | ADM | 201; IPv6 **canonicalizada** (RFC 5952) | ⏳ |
-| IP-03 | POST /devices | RN | Alta con **ambas** (IPv4 + IPv6) | ADM | 201; ambas presentes | ⏳ |
-| IP-04 | POST /devices | VAL | **Sin** ninguna dirección de gestión | ADM | **422** (al menos una obligatoria, RF-05a) | ⏳ |
-| IP-05 | POST /devices | VAL | `address` con formato inválido por familia; `prefixLength` fuera de rango (v4>32 / v6>128) | ADM | **422** | ⏳ |
-| IP-06 | POST /devices | RN | Unicidad IPv6 con **formas distintas** de la misma dirección | ADM | **409** (canonicalización → misma IP) | ⏳ |
-| IP-07 | GET /devices/{id} | RBAC | Redacción IPv6 para Auditor (host bajo el prefijo) | AUD | `2001:db8:acad:1::***`; valor real no viaja | ⏳ |
+| IP-01 | POST /devices | RN | Alta solo con `managementIpv4` | ADM | 201; dispositivo con IPv4, sin IPv6 | ✅ |
+| IP-02 | POST /devices | RN | Alta solo con `managementIpv6` (no canónica) | ADM | 201; IPv6 **canonicalizada** (RFC 5952) | ✅ |
+| IP-03 | POST /devices | RN | Alta con **ambas** (IPv4 + IPv6) | ADM | 201; ambas presentes | ✅ |
+| IP-04 | POST /devices | VAL | **Sin** ninguna dirección de gestión | ADM | **422** `ADDRESS_INVALID` (al menos una, RF-05a) | ✅ |
+| IP-05 | POST /devices | VAL | `address` con formato/familia inválidos | ADM | **422** `ADDRESS_INVALID` | ✅ |
+| IP-06 | POST /devices | RN | Unicidad IPv6 con **formas distintas** de la misma dirección | ADM | **409** (canonicalización → misma IP) | ✅ |
+| IP-07 | GET /devices/{id} | RBAC | Redacción IPv6 para Auditor (host bajo el prefijo) | AUD | `2001:db8:acad:1::***`; valor real no viaja | ✅ |
 | IP-08 | GET /devices | BSRCH | Filtro `mgmtIp` por dirección IPv4 **o** IPv6 | ADM | Coincide en la familia correcta | ⏳ |
-| IP-09 | (evento) | RN | `asset.*` transporta `managementIpv4`/`managementIpv6` en claro | — | Payload dual-stack correcto (`version` 1.1.0) | ⏳ |
+| IP-09 | (evento) | RN | `asset.*` transporta `managementIpv4`/`managementIpv6` en claro | — | Payload dual-stack correcto (`version` 1.1.0) | ✅ |
 
 ## Listar / filtrar — `GET /devices`
 

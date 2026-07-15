@@ -7,15 +7,19 @@ import com.redsegura.assetinventory.domain.DeviceStatus;
 import com.redsegura.assetinventory.domain.DeviceType;
 import com.redsegura.assetinventory.domain.IdempotencyRecord;
 import com.redsegura.assetinventory.domain.Location;
+import com.redsegura.assetinventory.domain.ManagementAddress;
 import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
 import com.redsegura.assetinventory.exception.IdempotencyKeyConflictException;
+import com.redsegura.assetinventory.exception.InvalidAddressException;
 import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import com.redsegura.assetinventory.generated.model.Device;
 import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateFull;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
+import com.redsegura.assetinventory.generated.model.Ipv4Address;
+import com.redsegura.assetinventory.generated.model.Ipv6Address;
 import com.redsegura.assetinventory.mapper.DeviceMapper;
 import com.redsegura.assetinventory.messaging.OutboxWriter;
 import com.redsegura.assetinventory.messaging.RabbitConfig;
@@ -51,6 +55,7 @@ public class DeviceService {
   private final AuditorAware<String> auditorAware;
   private final ObjectMapper objectMapper;
   private final OutboxWriter outboxWriter;
+  private final IpAddressNormalizer ipNormalizer;
 
   public DeviceService(
       DeviceRepository repository,
@@ -58,11 +63,13 @@ public class DeviceService {
       DeviceMapper mapper,
       AuditorAware<String> auditorAware,
       ObjectMapper objectMapper,
-      OutboxWriter outboxWriter) {
+      OutboxWriter outboxWriter,
+      IpAddressNormalizer ipNormalizer) {
     this.repository = repository;
     this.idempotencyRepository = idempotencyRepository;
     this.mapper = mapper;
     this.auditorAware = auditorAware;
+    this.ipNormalizer = ipNormalizer;
     this.objectMapper = objectMapper;
     this.outboxWriter = outboxWriter;
   }
@@ -104,9 +111,9 @@ public class DeviceService {
         new com.redsegura.assetinventory.domain.Device(
             req.getSerialNumber(),
             req.getHostname(),
-            req.getMgmtIp(),
             toDomainType(req.getDeviceType()),
             toDomainCriticality(req.getCriticality()));
+    applyManagementAddresses(entity, req.getManagementIpv4(), req.getManagementIpv6(), true);
     entity.setAssetTag(req.getAssetTag());
     entity.setVendor(req.getVendor());
     entity.setModel(req.getModel());
@@ -153,7 +160,7 @@ public class DeviceService {
     Specification<com.redsegura.assetinventory.domain.Device> spec =
         DeviceSpecifications.withFilters(
             hostname,
-            mgmtIp,
+            ipNormalizer.canonicalizeForSearch(mgmtIp),
             serialNumber,
             deviceType,
             site,
@@ -172,7 +179,8 @@ public class DeviceService {
         id,
         expectedVersion,
         req.getHostname(),
-        req.getMgmtIp(),
+        req.getManagementIpv4(),
+        req.getManagementIpv6(),
         req.getDeviceType(),
         req.getVendor(),
         req.getModel(),
@@ -188,7 +196,8 @@ public class DeviceService {
         id,
         expectedVersion,
         req.getHostname(),
-        req.getMgmtIp(),
+        req.getManagementIpv4(),
+        req.getManagementIpv6(),
         req.getDeviceType(),
         req.getVendor(),
         req.getModel(),
@@ -216,7 +225,8 @@ public class DeviceService {
       UUID id,
       long expectedVersion,
       String hostname,
-      String mgmtIp,
+      Ipv4Address managementIpv4,
+      Ipv6Address managementIpv6,
       com.redsegura.assetinventory.generated.model.DeviceType deviceType,
       String vendor,
       String model,
@@ -233,9 +243,21 @@ public class DeviceService {
       entity.setHostname(hostname);
       changedFields.add("hostname");
     }
-    if (mgmtIp != null) {
-      entity.setMgmtIp(mgmtIp);
-      changedFields.add("mgmtIp");
+    if (managementIpv4 != null) {
+      entity.setManagementIpv4(
+          ipNormalizer.normalizeIpv4(
+              managementIpv4.getAddress(),
+              managementIpv4.getPrefixLength(),
+              managementIpv4.getGateway()));
+      changedFields.add("managementIpv4");
+    }
+    if (managementIpv6 != null) {
+      entity.setManagementIpv6(
+          ipNormalizer.normalizeIpv6(
+              managementIpv6.getAddress(),
+              managementIpv6.getPrefixLength(),
+              managementIpv6.getGateway()));
+      changedFields.add("managementIpv6");
     }
     if (deviceType != null) {
       entity.setDeviceType(toDomainType(deviceType));
@@ -264,6 +286,35 @@ public class DeviceService {
     VersionedDevice updated = save(entity);
     outboxWriter.record(RabbitConfig.ROUTING_ASSET_UPDATED, updated.body(), changedFields);
     return updated;
+  }
+
+  /**
+   * Normaliza (valida + canonicaliza) y asigna las direcciones de gestión (RF-05a). Si {@code
+   * required}, exige al menos una (managementIpv4 o managementIpv6) → 422 si falta.
+   */
+  private void applyManagementAddresses(
+      com.redsegura.assetinventory.domain.Device entity,
+      Ipv4Address v4,
+      Ipv6Address v6,
+      boolean required) {
+    if (v4 != null) {
+      entity.setManagementIpv4(
+          ipNormalizer.normalizeIpv4(v4.getAddress(), v4.getPrefixLength(), v4.getGateway()));
+    }
+    if (v6 != null) {
+      entity.setManagementIpv6(
+          ipNormalizer.normalizeIpv6(v6.getAddress(), v6.getPrefixLength(), v6.getGateway()));
+    }
+    if (required
+        && managementAddressAbsent(entity.getManagementIpv4())
+        && managementAddressAbsent(entity.getManagementIpv6())) {
+      throw new InvalidAddressException(
+          "Debe indicar al menos una dirección de gestión (managementIpv4 o managementIpv6)");
+    }
+  }
+
+  private static boolean managementAddressAbsent(ManagementAddress address) {
+    return address == null || address.getAddress() == null;
   }
 
   /** RN8: el If-Match debe coincidir con la versión actual del recurso. */

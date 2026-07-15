@@ -1,5 +1,7 @@
 package com.redsegura.assetinventory.domain;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -34,7 +36,8 @@ import java.util.UUID;
     uniqueConstraints = {
       @UniqueConstraint(name = "uq_devices_serial", columnNames = "serial_number"),
       @UniqueConstraint(name = "uq_devices_hostname", columnNames = "hostname"),
-      @UniqueConstraint(name = "uq_devices_mgmt_ip", columnNames = "mgmt_ip")
+      @UniqueConstraint(name = "uq_devices_mgmt_ipv4", columnNames = "mgmt_ipv4_address"),
+      @UniqueConstraint(name = "uq_devices_mgmt_ipv6", columnNames = "mgmt_ipv6_address")
     })
 public class Device extends Auditable {
 
@@ -51,8 +54,23 @@ public class Device extends Auditable {
   @Column(nullable = false)
   private String hostname;
 
-  @Column(name = "mgmt_ip", nullable = false)
-  private String mgmtIp;
+  /** Dirección de gestión IPv4 (RF-05a); nula si el dispositivo solo tiene IPv6. */
+  @Embedded
+  @AttributeOverrides({
+    @AttributeOverride(name = "address", column = @Column(name = "mgmt_ipv4_address", length = 15)),
+    @AttributeOverride(name = "prefixLength", column = @Column(name = "mgmt_ipv4_prefix")),
+    @AttributeOverride(name = "gateway", column = @Column(name = "mgmt_ipv4_gateway", length = 15))
+  })
+  private ManagementAddress managementIpv4;
+
+  /** Dirección de gestión IPv6 canonicalizada (RF-05a); nula si el dispositivo solo tiene IPv4. */
+  @Embedded
+  @AttributeOverrides({
+    @AttributeOverride(name = "address", column = @Column(name = "mgmt_ipv6_address", length = 45)),
+    @AttributeOverride(name = "prefixLength", column = @Column(name = "mgmt_ipv6_prefix")),
+    @AttributeOverride(name = "gateway", column = @Column(name = "mgmt_ipv6_gateway", length = 45))
+  })
+  private ManagementAddress managementIpv6;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "device_type", nullable = false)
@@ -78,16 +96,15 @@ public class Device extends Auditable {
   /** Constructor sin argumentos requerido por JPA. */
   protected Device() {}
 
-  /** Crea un dispositivo con sus campos obligatorios (RF-01/RN3). */
+  /**
+   * Crea un dispositivo con sus campos obligatorios (RF-01/RN3). Las direcciones de gestión
+   * (RF-05a) se asignan aparte con {@link #setManagementIpv4}/{@link #setManagementIpv6}; al menos
+   * una debe quedar presente (validado en el servicio y por CHECK en BD).
+   */
   public Device(
-      String serialNumber,
-      String hostname,
-      String mgmtIp,
-      DeviceType deviceType,
-      Criticality criticality) {
+      String serialNumber, String hostname, DeviceType deviceType, Criticality criticality) {
     this.serialNumber = serialNumber;
     this.hostname = hostname;
-    this.mgmtIp = mgmtIp;
     this.deviceType = deviceType;
     this.criticality = criticality;
   }
@@ -120,12 +137,20 @@ public class Device extends Auditable {
     this.hostname = hostname;
   }
 
-  public String getMgmtIp() {
-    return mgmtIp;
+  public ManagementAddress getManagementIpv4() {
+    return managementIpv4;
   }
 
-  public void setMgmtIp(String mgmtIp) {
-    this.mgmtIp = mgmtIp;
+  public void setManagementIpv4(ManagementAddress managementIpv4) {
+    this.managementIpv4 = managementIpv4;
+  }
+
+  public ManagementAddress getManagementIpv6() {
+    return managementIpv6;
+  }
+
+  public void setManagementIpv6(ManagementAddress managementIpv6) {
+    this.managementIpv6 = managementIpv6;
   }
 
   public DeviceType getDeviceType() {
