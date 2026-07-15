@@ -44,7 +44,7 @@ class AssetEventContractIT extends AbstractIntegrationTest {
   private static final JsonSchema SCHEMA =
       JsonSchemaFactory.getInstance(SpecVersion.VersionFlag.V202012)
           .getSchema(
-              AssetEventContractIT.class.getResourceAsStream("/contracts/asset-event.schema.json"));
+              AssetEventContractIT.class.getResourceAsStream("/events/asset-event.schema.json"));
 
   @Autowired private DeviceService service;
   @Autowired private OutboxRepository outboxRepository;
