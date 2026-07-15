@@ -1,0 +1,56 @@
+{
+  "realm": "redsegura",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 3600,
+  "roles": {
+    "realm": [
+      { "name": "ADM", "description": "Administrador" },
+      { "name": "OPE", "description": "Operador" },
+      { "name": "AUD", "description": "Auditor / solo lectura" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "redsegura-postman",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "firstName": "Ada",
+      "lastName": "Administradora",
+      "email": "admin@redsegura.local",
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["ADM"]
+    },
+    {
+      "username": "operador",
+      "enabled": true,
+      "firstName": "Omar",
+      "lastName": "Operador",
+      "email": "operador@redsegura.local",
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["OPE"]
+    },
+    {
+      "username": "auditor",
+      "enabled": true,
+      "firstName": "Aura",
+      "lastName": "Auditora",
+      "email": "auditor@redsegura.local",
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["AUD"]
+    }
+  ]
+}

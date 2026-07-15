@@ -1,0 +1,298 @@
+{
+  "info": {
+    "name": "redSegura · asset-inventory-service (dev)",
+    "description": "Colección para probar asset-inventory-service en el entorno de desarrollo (docker-compose.dev.yml). Flujo sugerido: 1) 'Auth › Token (Administrador)', 2) los requests de Dispositivos. Los tests guardan deviceId/etag/jobId automáticamente.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8081" },
+    { "key": "keycloak_url", "value": "http://localhost:8080" },
+    { "key": "client_id", "value": "redsegura-postman" },
+    { "key": "access_token", "value": "" },
+    { "key": "deviceId", "value": "" },
+    { "key": "etag", "value": "" },
+    { "key": "jobId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Token (Administrador)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('access_token', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "url": "{{keycloak_url}}/realms/redsegura/protocol/openid-connect/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{client_id}}" },
+                { "key": "username", "value": "admin" },
+                { "key": "password", "value": "password" }
+              ]
+            },
+            "description": "Obtiene un JWT del Administrador (rol ADM) y lo guarda en {{access_token}}. Respuesta esperada: 200 con access_token."
+          }
+        },
+        {
+          "name": "Token (Operador)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.collectionVariables.set('access_token', pm.response.json().access_token);"]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "url": "{{keycloak_url}}/realms/redsegura/protocol/openid-connect/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{client_id}}" },
+                { "key": "username", "value": "operador" },
+                { "key": "password", "value": "password" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Token (Auditor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.collectionVariables.set('access_token', pm.response.json().access_token);"]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "url": "{{keycloak_url}}/realms/redsegura/protocol/openid-connect/token",
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{client_id}}" },
+                { "key": "username", "value": "auditor" },
+                { "key": "password", "value": "password" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dispositivos",
+      "item": [
+        {
+          "name": "Registrar dispositivo (IPv4)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('deviceId', pm.response.json().id);",
+                  "pm.collectionVariables.set('etag', pm.response.headers.get('ETag'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/devices",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serialNumber\": \"FCW-001\",\n  \"hostname\": \"SW-CORE-1\",\n  \"managementIpv4\": { \"address\": \"10.0.0.11\", \"prefixLength\": 24, \"gateway\": \"10.0.0.1\" },\n  \"deviceType\": \"SWITCH\",\n  \"vendor\": \"Cisco\",\n  \"model\": \"Catalyst 9300\",\n  \"criticality\": \"ALTA\"\n}"
+            },
+            "description": "Alta de dispositivo (rol ADM). Respuesta esperada: 201 Created, cabecera Location y ETag, cuerpo con el dispositivo creado (status ACTIVO)."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "code": 201,
+              "status": "Created",
+              "header": [
+                { "key": "Location", "value": "/api/v1/devices/046b6c7f-0b8a-43b9-b35d-6489e6daee91" },
+                { "key": "ETag", "value": "\"0\"" },
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "body": "{\n  \"id\": \"046b6c7f-0b8a-43b9-b35d-6489e6daee91\",\n  \"serialNumber\": \"FCW-001\",\n  \"hostname\": \"SW-CORE-1\",\n  \"managementIpv4\": { \"address\": \"10.0.0.11\", \"prefixLength\": 24, \"gateway\": \"10.0.0.1\" },\n  \"deviceType\": \"SWITCH\",\n  \"vendor\": \"Cisco\",\n  \"model\": \"Catalyst 9300\",\n  \"criticality\": \"ALTA\",\n  \"status\": \"ACTIVO\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Registrar dispositivo (IPv6)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('201 Created', () => pm.response.to.have.status(201));",
+                  "pm.test('IPv6 canonicalizada', () => pm.expect(pm.response.json().managementIpv6.address).to.eql('2001:db8:acad:1::11'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/devices",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serialNumber\": \"FCW-004\",\n  \"hostname\": \"SW-V6\",\n  \"managementIpv6\": { \"address\": \"2001:0DB8:ACAD:1::11\", \"prefixLength\": 64 },\n  \"deviceType\": \"ROUTER\",\n  \"criticality\": \"MEDIA\"\n}"
+            },
+            "description": "Alta con dirección IPv6 (RF-05a). Se canonicaliza (RFC 5952). Respuesta esperada: 201 con managementIpv6.address = 2001:db8:acad:1::11."
+          }
+        },
+        {
+          "name": "Consultar dispositivo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('200 OK', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('etag', pm.response.headers.get('ETag'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/devices/{{deviceId}}",
+            "description": "Detalle por id (ADM/OPE/AUD). Respuesta esperada: 200 + cabecera ETag. Para el Auditor, managementIpv4.address aparece enmascarado (10.0.0.***)."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "code": 200,
+              "status": "OK",
+              "header": [{ "key": "ETag", "value": "\"0\"" }],
+              "body": "{\n  \"id\": \"046b6c7f-0b8a-43b9-b35d-6489e6daee91\",\n  \"serialNumber\": \"FCW-001\",\n  \"hostname\": \"SW-CORE-1\",\n  \"managementIpv4\": { \"address\": \"10.0.0.11\", \"prefixLength\": 24, \"gateway\": \"10.0.0.1\" },\n  \"deviceType\": \"SWITCH\",\n  \"criticality\": \"ALTA\",\n  \"status\": \"ACTIVO\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Listar / buscar (por hostname)",
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"] } }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/devices?hostname=core",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "devices"],
+              "query": [{ "key": "hostname", "value": "core" }]
+            },
+            "description": "Búsqueda paginada (parcial, insensible a mayúsculas y acentos). Respuesta esperada: 200 con {content, totalElements, page, size, ...}. Filtros: hostname, mgmtIp (IPv4/IPv6), serialNumber, deviceType, site, rack, criticidad, fabricante, modelo, estado."
+          }
+        },
+        {
+          "name": "Editar (PATCH, requiere If-Match)",
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));", "pm.collectionVariables.set('etag', pm.response.headers.get('ETag'));"] } }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/merge-patch+json" },
+              { "key": "If-Match", "value": "{{etag}}" }
+            ],
+            "url": "{{base_url}}/api/v1/devices/{{deviceId}}",
+            "body": { "mode": "raw", "raw": "{ \"criticality\": \"MEDIA\" }" },
+            "description": "Edición parcial (JSON Merge Patch). Requiere If-Match con el ETag actual (concurrencia optimista). Respuesta esperada: 200 + ETag incrementado. Sin If-Match → 428; ETag obsoleto → 412."
+          }
+        },
+        {
+          "name": "Dar de baja (DELETE, requiere If-Match)",
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('204 No Content', () => pm.response.to.have.status(204));"] } }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "If-Match", "value": "{{etag}}" }],
+            "url": "{{base_url}}/api/v1/devices/{{deviceId}}",
+            "description": "Baja lógica (soft delete). Respuesta esperada: 204; el dispositivo pasa a status BAJA (no se borra). Un Operador/Auditor → 403."
+          }
+        },
+        {
+          "name": "Importación masiva (asíncrona)",
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('202 Accepted', () => pm.response.to.have.status(202));", "pm.collectionVariables.set('jobId', pm.response.json().jobId);"] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/v1/devices/bulk",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"devices\": [\n    { \"serialNumber\": \"BULK-1\", \"hostname\": \"SW-B1\", \"managementIpv4\": { \"address\": \"10.1.0.1\", \"prefixLength\": 24 }, \"deviceType\": \"SWITCH\", \"criticality\": \"MEDIA\" },\n    { \"serialNumber\": \"BULK-2\", \"hostname\": \"SW-B2\", \"managementIpv4\": { \"address\": \"10.1.0.2\", \"prefixLength\": 24 }, \"deviceType\": \"SWITCH\", \"criticality\": \"BAJA\" }\n  ]\n}"
+            },
+            "description": "Alta por lotes (async). Respuesta esperada: 202 + job (QUEUED) con jobId. Consultar el estado con el siguiente request."
+          }
+        },
+        {
+          "name": "Estado del job de importación",
+          "event": [
+            { "listen": "test", "script": { "exec": ["pm.test('200 OK', () => pm.response.to.have.status(200));"] } }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/devices/bulk/jobs/{{jobId}}",
+            "description": "Estado del job. Respuesta esperada: 200 con {status: QUEUED|IN_PROGRESS|COMPLETED|FAILED, total, succeeded, failed, results[]}."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Salud (sin token)",
+      "item": [
+        {
+          "name": "Liveness",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/health/liveness",
+            "description": "Respuesta esperada: 200 {\"status\":\"UP\"}."
+          }
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": "{{base_url}}/api/v1/health/readiness",
+            "description": "Respuesta esperada: 200 {\"status\":\"UP\"} si la BD responde; 503 {\"status\":\"DOWN\"} si no."
+          }
+        }
+      ]
+    }
+  ]
+}

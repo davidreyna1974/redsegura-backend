@@ -32,6 +32,10 @@ vive en el repositorio umbrella `management`:
 > outbox + importación masiva; 57 tests, cobertura ≥ 70 %, **CI activo y gateando `main`**). Resto de
 > servicios de Fase A sin iniciar. Contratos OpenAPI de Fase A definidos.
 
+> **Probar un servicio localmente (vía Postman/curl):** entorno de desarrollo con Docker Compose
+> (PostgreSQL + RabbitMQ + **Keycloak** sembrado + el servicio) y colección de Postman — ver
+> [`deploy/README.md`](deploy/README.md). `docker compose -f docker-compose.dev.yml up --build`.
+
 ## 🛠️ Stack
 
 - **Java 21 / Spring Boot 3.3.5** (servicios de lógica de negocio) — Maven, POM padre común.
