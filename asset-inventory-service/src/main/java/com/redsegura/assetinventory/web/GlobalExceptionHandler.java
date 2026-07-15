@@ -4,6 +4,7 @@ import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
 import com.redsegura.assetinventory.exception.IdempotencyKeyConflictException;
+import com.redsegura.assetinventory.exception.InvalidAddressException;
 import com.redsegura.assetinventory.exception.InvalidRequestException;
 import com.redsegura.assetinventory.exception.JobNotFoundException;
 import com.redsegura.assetinventory.exception.PreconditionFailedException;
@@ -54,6 +55,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(InvalidRequestException.class)
   ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
     return problem(HttpStatus.BAD_REQUEST, "Petición inválida", ex.getMessage(), "INVALID_REQUEST");
+  }
+
+  /** Dirección de gestión inválida (formato/familia/ninguna presente, RF-05a) -> 422. */
+  @ExceptionHandler(InvalidAddressException.class)
+  ProblemDetail handleInvalidAddress(InvalidAddressException ex) {
+    return problem(
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        "Dirección de gestión inválida",
+        ex.getMessage(),
+        "ADDRESS_INVALID");
   }
 
   /** RN9: reuso del Idempotency-Key con un cuerpo distinto -> 409. */

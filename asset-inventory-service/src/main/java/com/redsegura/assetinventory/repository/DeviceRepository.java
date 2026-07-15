@@ -19,5 +19,7 @@ public interface DeviceRepository
 
   boolean existsByHostname(String hostname);
 
-  boolean existsByMgmtIp(String mgmtIp);
+  boolean existsByManagementIpv4Address(String address);
+
+  boolean existsByManagementIpv6Address(String address);
 }

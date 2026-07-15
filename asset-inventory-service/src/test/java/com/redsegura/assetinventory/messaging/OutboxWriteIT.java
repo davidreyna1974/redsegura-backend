@@ -10,6 +10,7 @@ import com.redsegura.assetinventory.generated.model.Criticality;
 import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
 import com.redsegura.assetinventory.generated.model.DeviceType;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
+import com.redsegura.assetinventory.generated.model.Ipv4Address;
 import com.redsegura.assetinventory.generated.model.Location;
 import com.redsegura.assetinventory.repository.DeviceRepository;
 import com.redsegura.assetinventory.repository.IdempotencyRepository;
@@ -42,7 +43,8 @@ class OutboxWriteIT extends AbstractIntegrationTest {
   }
 
   private static DeviceCreateRequest req(String serial, String hostname, String ip) {
-    return new DeviceCreateRequest(serial, hostname, ip, DeviceType.SWITCH, Criticality.ALTA)
+    return new DeviceCreateRequest(serial, hostname, DeviceType.SWITCH, Criticality.ALTA)
+        .managementIpv4(new Ipv4Address().address(ip).prefixLength(24).gateway("10.0.0.254"))
         .vendor("Cisco")
         .model("C9300")
         .location(new Location().site("MX-DC1").rack("B07").rackUnit(12));
@@ -77,7 +79,8 @@ class OutboxWriteIT extends AbstractIntegrationTest {
     JsonNode payload = payloadOf(event);
     assertThat(payload.get("deviceId").asText()).isEqualTo(created.body().getId().toString());
     assertThat(payload.get("hostname").asText()).isEqualTo("SW1");
-    assertThat(payload.get("mgmtIp").asText()).isEqualTo("10.0.0.1");
+    assertThat(payload.get("managementIpv4").get("address").asText()).isEqualTo("10.0.0.1");
+    assertThat(payload.get("managementIpv4").get("prefixLength").asInt()).isEqualTo(24);
     assertThat(payload.get("status").asText()).isEqualTo("ACTIVO");
     assertThat(payload.get("location").asText()).isEqualTo("MX-DC1 / B07 / U12");
   }

@@ -8,6 +8,7 @@ import com.redsegura.assetinventory.AbstractIntegrationTest;
 import com.redsegura.assetinventory.generated.model.Criticality;
 import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
 import com.redsegura.assetinventory.generated.model.DeviceType;
+import com.redsegura.assetinventory.generated.model.Ipv4Address;
 import com.redsegura.assetinventory.repository.DeviceRepository;
 import com.redsegura.assetinventory.repository.OutboxRepository;
 import com.redsegura.assetinventory.service.DeviceService;
@@ -75,7 +76,8 @@ class OutboxRelayIT extends AbstractIntegrationTest {
   void publishPending_deliversAssetCreatedToBroker() throws Exception {
     VersionedDevice created =
         service.create(
-            new DeviceCreateRequest("S1", "SW1", "10.0.0.1", DeviceType.SWITCH, Criticality.ALTA),
+            new DeviceCreateRequest("S1", "SW1", DeviceType.SWITCH, Criticality.ALTA)
+                .managementIpv4(new Ipv4Address().address("10.0.0.1").prefixLength(24)),
             null);
 
     int published = relay.publishPending();

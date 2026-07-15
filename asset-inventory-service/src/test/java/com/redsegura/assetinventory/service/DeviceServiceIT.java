@@ -8,12 +8,15 @@ import com.redsegura.assetinventory.exception.DeviceDecommissionedException;
 import com.redsegura.assetinventory.exception.DeviceNotFoundException;
 import com.redsegura.assetinventory.exception.DuplicateDeviceException;
 import com.redsegura.assetinventory.exception.IdempotencyKeyConflictException;
+import com.redsegura.assetinventory.exception.InvalidAddressException;
 import com.redsegura.assetinventory.exception.PreconditionFailedException;
 import com.redsegura.assetinventory.generated.model.Criticality;
 import com.redsegura.assetinventory.generated.model.DeviceCreateRequest;
 import com.redsegura.assetinventory.generated.model.DeviceStatus;
 import com.redsegura.assetinventory.generated.model.DeviceType;
 import com.redsegura.assetinventory.generated.model.DeviceUpdateRequest;
+import com.redsegura.assetinventory.generated.model.Ipv4Address;
+import com.redsegura.assetinventory.generated.model.Ipv6Address;
 import com.redsegura.assetinventory.generated.model.Location;
 import com.redsegura.assetinventory.repository.DeviceRepository;
 import com.redsegura.assetinventory.repository.IdempotencyRepository;
@@ -39,7 +42,8 @@ class DeviceServiceIT extends AbstractIntegrationTest {
   }
 
   private static DeviceCreateRequest req(String serial, String hostname, String ip) {
-    return new DeviceCreateRequest(serial, hostname, ip, DeviceType.SWITCH, Criticality.ALTA)
+    return new DeviceCreateRequest(serial, hostname, DeviceType.SWITCH, Criticality.ALTA)
+        .managementIpv4(new Ipv4Address().address(ip).prefixLength(24).gateway("10.0.0.254"))
         .assetTag("A-1")
         .vendor("Cisco")
         .model("C9300")
@@ -89,7 +93,7 @@ class DeviceServiceIT extends AbstractIntegrationTest {
 
     assertThat(updated.body().getHostname()).isEqualTo("SW1-NEW");
     assertThat(updated.body().getDeviceType()).isEqualTo(DeviceType.ROUTER);
-    assertThat(updated.body().getMgmtIp()).isEqualTo("10.0.0.1"); // no cambia
+    assertThat(updated.body().getManagementIpv4().getAddress()).isEqualTo("10.0.0.1"); // no cambia
     assertThat(updated.body().getSerialNumber()).isEqualTo("S1"); // inmutable (RN2)
     assertThat(updated.version()).isEqualTo(1L); // version incrementada
   }
@@ -213,5 +217,76 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     assertThatThrownBy(() -> service.create(req("S2", "SW2", "10.0.0.2"), "key-123"))
         .isInstanceOf(IdempotencyKeyConflictException.class);
     assertThat(repository.count()).isEqualTo(1);
+  }
+
+  private static DeviceCreateRequest bare(String serial, String hostname) {
+    return new DeviceCreateRequest(serial, hostname, DeviceType.SWITCH, Criticality.ALTA);
+  }
+
+  /** RF-05a/IP-02: la IPv6 se guarda en forma canónica (RFC 5952). */
+  @Test
+  void create_withNonCanonicalIpv6_storesCanonicalForm() {
+    var created =
+        service.create(
+            bare("S1", "SW1")
+                .managementIpv6(
+                    new Ipv6Address()
+                        .address("2001:0DB8:0000:0000:0000:0000:0000:0011")
+                        .prefixLength(64)),
+            null);
+
+    assertThat(created.body().getManagementIpv6().getAddress()).isEqualTo("2001:db8::11");
+    assertThat(created.body().getManagementIpv4()).isNull();
+  }
+
+  /** RF-05a/IP-03: dual-stack (IPv4 + IPv6) se guardan ambas. */
+  @Test
+  void create_dualStack_storesBoth() {
+    var created =
+        service.create(
+            bare("S1", "SW1")
+                .managementIpv4(new Ipv4Address().address("10.0.0.1").prefixLength(24))
+                .managementIpv6(new Ipv6Address().address("2001:db8::1").prefixLength(64)),
+            null);
+
+    assertThat(created.body().getManagementIpv4().getAddress()).isEqualTo("10.0.0.1");
+    assertThat(created.body().getManagementIpv6().getAddress()).isEqualTo("2001:db8::1");
+  }
+
+  /** RF-05a/IP-04: sin ninguna dirección de gestión -> 422. */
+  @Test
+  void create_withoutAnyManagementAddress_throws() {
+    assertThatThrownBy(() -> service.create(bare("S1", "SW1"), null))
+        .isInstanceOf(InvalidAddressException.class);
+  }
+
+  /** RF-05a/IP-05: familia equivocada (IPv6 en el campo IPv4) -> 422. */
+  @Test
+  void create_withWrongFamily_throws() {
+    var req =
+        bare("S1", "SW1")
+            .managementIpv4(new Ipv4Address().address("2001:db8::11").prefixLength(24));
+
+    assertThatThrownBy(() -> service.create(req, null)).isInstanceOf(InvalidAddressException.class);
+  }
+
+  /** RF-05a/IP-06: unicidad IPv6 con formas textuales distintas de la misma dirección -> 409. */
+  @Test
+  void create_duplicateIpv6DifferentForm_throwsDuplicate() {
+    service.create(
+        bare("S1", "SW1")
+            .managementIpv6(new Ipv6Address().address("2001:db8::11").prefixLength(64)),
+        null);
+
+    assertThatThrownBy(
+            () ->
+                service.create(
+                    bare("S2", "SW2")
+                        .managementIpv6(
+                            new Ipv6Address()
+                                .address("2001:0db8:0000:0000:0000:0000:0000:0011")
+                                .prefixLength(64)),
+                    null))
+        .isInstanceOf(DuplicateDeviceException.class);
   }
 }

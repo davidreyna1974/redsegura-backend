@@ -9,6 +9,7 @@ import com.redsegura.assetinventory.domain.Device;
 import com.redsegura.assetinventory.domain.DeviceStatus;
 import com.redsegura.assetinventory.domain.DeviceType;
 import com.redsegura.assetinventory.domain.Location;
+import com.redsegura.assetinventory.domain.ManagementAddress;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +26,8 @@ class DeviceRepositoryIT extends AbstractIntegrationTest {
   }
 
   private static Device sampleDevice(String serial, String hostname, String mgmtIp) {
-    Device d = new Device(serial, hostname, mgmtIp, DeviceType.SWITCH, Criticality.ALTA);
+    Device d = new Device(serial, hostname, DeviceType.SWITCH, Criticality.ALTA);
+    d.setManagementIpv4(new ManagementAddress(mgmtIp, 24, "10.0.0.254"));
     d.setVendor("Cisco");
     d.setModel("Catalyst 9300");
     d.setLocation(new Location("MX-DC1", "Sala 2", "B", "B07", 12));
@@ -54,9 +56,9 @@ class DeviceRepositoryIT extends AbstractIntegrationTest {
         .isInstanceOf(DataIntegrityViolationException.class);
   }
 
-  /** RN1: el índice único rechaza una IP de gestión duplicada. */
+  /** RN1/RF-05a: el índice único rechaza una dirección de gestión IPv4 duplicada. */
   @Test
-  void save_rejectsDuplicateMgmtIp() {
+  void save_rejectsDuplicateMgmtIpv4() {
     repository.saveAndFlush(sampleDevice("SER-1", "SW1", "10.0.0.5"));
 
     assertThatThrownBy(() -> repository.saveAndFlush(sampleDevice("SER-2", "SW2", "10.0.0.5")))
@@ -69,6 +71,6 @@ class DeviceRepositoryIT extends AbstractIntegrationTest {
 
     assertThat(repository.findBySerialNumber("FIND-1")).isPresent();
     assertThat(repository.existsByHostname("SW-FIND")).isTrue();
-    assertThat(repository.existsByMgmtIp("10.0.0.99")).isFalse();
+    assertThat(repository.existsByManagementIpv4Address("10.0.0.99")).isFalse();
   }
 }

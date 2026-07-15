@@ -57,7 +57,8 @@ class ObservabilityIT extends AbstractIntegrationTest {
                 .with(jwt().authorities(new SimpleGrantedAuthority("ADM")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(
-                    "{\"serialNumber\":\"OBS1\",\"hostname\":\"OBS-SW\",\"mgmtIp\":\"10.0.0.9\","
+                    "{\"serialNumber\":\"OBS1\",\"hostname\":\"OBS-SW\",\"managementIpv4\":"
+                        + "{\"address\":\"10.0.0.9\",\"prefixLength\":24},"
                         + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\"}"))
         .andExpect(status().isCreated());
 

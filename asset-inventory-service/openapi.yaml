@@ -47,12 +47,16 @@ paths:
       summary: Listar y filtrar dispositivos
       description: |
         Filtros combinables (AND); búsqueda insensible a mayúsculas/acentos.
-        `mgmtIp` se devuelve **enmascarada** para el rol Auditor (ADR-11).
+        Las direcciones de gestión (`managementIpv4`/`managementIpv6`) se devuelven
+        **enmascaradas** (porción de host) para el rol Auditor (ADR-11).
       operationId: listDevices
       x-roles: [ADM, OPE, AUD]
       parameters:
         - { name: hostname, in: query, schema: { type: string } }
-        - { name: mgmtIp, in: query, schema: { type: string } }
+        - name: mgmtIp
+          in: query
+          description: Coincidencia por dirección de gestión IPv4 **o** IPv6 (RF-05a).
+          schema: { type: string }
         - { name: serialNumber, in: query, schema: { type: string } }
         - { name: deviceType, in: query, schema: { $ref: "#/components/schemas/DeviceType" } }
         - { name: site, in: query, schema: { type: string } }
@@ -284,15 +288,38 @@ components:
         rack: { type: string, example: B07 }
         rackUnit: { type: ["integer", "null"], minimum: 1, maximum: 60, example: 12 }
 
+    Ipv4Address:
+      type: object
+      description: Dirección de gestión IPv4 con su prefijo CIDR y gateway (RF-05a).
+      required: [address, prefixLength]
+      properties:
+        address: { type: string, format: ipv4, description: "Dirección IPv4 de gestión", example: 10.0.0.11 }
+        prefixLength: { type: integer, minimum: 0, maximum: 32, description: "Longitud del prefijo (máscara CIDR)", example: 24 }
+        gateway: { type: ["string", "null"], format: ipv4, description: "Puerta de enlace (opcional)", example: 10.0.0.1 }
+
+    Ipv6Address:
+      type: object
+      description: Dirección de gestión IPv6 (forma canónica RFC 5952) con su prefijo CIDR y gateway (RF-05a).
+      required: [address, prefixLength]
+      properties:
+        address: { type: string, format: ipv6, description: "Dirección IPv6 de gestión (canónica, RFC 5952)", example: "2001:db8:acad:1::11" }
+        prefixLength: { type: integer, minimum: 0, maximum: 128, description: "Longitud del prefijo (máscara CIDR)", example: 64 }
+        gateway: { type: ["string", "null"], format: ipv6, description: "Puerta de enlace (opcional)", example: "2001:db8:acad:1::1" }
+
     Device:
       type: object
-      required: [id, serialNumber, hostname, mgmtIp, deviceType, criticality, status]
+      required: [id, serialNumber, hostname, deviceType, criticality, status]
+      description: >-
+        Un dispositivo tiene al menos una dirección de gestión (`managementIpv4` y/o
+        `managementIpv6`). Para el rol Auditor, la porción de host de cada dirección se enmascara
+        (ADR-11).
       properties:
         id: { type: string, format: uuid, readOnly: true }
         serialNumber: { type: string, description: "Identidad estable (inmutable)", example: FCW2245A1BC }
         assetTag: { type: ["string", "null"], description: "Etiqueta de activo (opcional)" }
         hostname: { type: string, example: SW1-CORE }
-        mgmtIp: { type: string, description: "IP de gestión; enmascarada para el rol Auditor (ADR-11)", example: 10.0.0.11 }
+        managementIpv4: { $ref: "#/components/schemas/Ipv4Address" }
+        managementIpv6: { $ref: "#/components/schemas/Ipv6Address" }
         deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string, example: Cisco }
         model: { type: string, example: Catalyst 9300 }
@@ -306,12 +333,17 @@ components:
 
     DeviceCreateRequest:
       type: object
-      required: [serialNumber, hostname, mgmtIp, deviceType, criticality]
+      description: >-
+        Alta de dispositivo. **Al menos una** dirección de gestión (`managementIpv4` y/o
+        `managementIpv6`) es obligatoria; la regla y el formato/canonicalización IPv4/IPv6 se
+        validan en el servidor (RF-05a) → 422 si no se cumple.
+      required: [serialNumber, hostname, deviceType, criticality]
       properties:
         serialNumber: { type: string, minLength: 1, maxLength: 100 }
         assetTag: { type: string, maxLength: 100 }
         hostname: { type: string, minLength: 1, maxLength: 255 }
-        mgmtIp: { type: string, minLength: 3, maxLength: 45, pattern: '^((25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(25[0-5]|2[0-4]\d|[01]?\d?\d)$' }
+        managementIpv4: { $ref: "#/components/schemas/Ipv4Address" }
+        managementIpv6: { $ref: "#/components/schemas/Ipv6Address" }
         deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string }
         model: { type: string }
@@ -320,12 +352,15 @@ components:
 
     DeviceUpdateFull:
       type: object
-      description: Edición completa (PUT). serialNumber es inmutable (no editable).
-      required: [hostname, mgmtIp, deviceType, criticality]
+      description: >-
+        Edición completa (PUT). `serialNumber` es inmutable. **Al menos una** dirección de gestión
+        (`managementIpv4`/`managementIpv6`) es obligatoria (validado en el servidor, RF-05a).
+      required: [hostname, deviceType, criticality]
       properties:
         assetTag: { type: string }
         hostname: { type: string, minLength: 1, maxLength: 255 }
-        mgmtIp: { type: string, minLength: 3, maxLength: 45, pattern: '^((25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(25[0-5]|2[0-4]\d|[01]?\d?\d)$' }
+        managementIpv4: { $ref: "#/components/schemas/Ipv4Address" }
+        managementIpv6: { $ref: "#/components/schemas/Ipv6Address" }
         deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string }
         model: { type: string }
@@ -334,11 +369,14 @@ components:
 
     DeviceUpdateRequest:
       type: object
-      description: Edición parcial (JSON Merge Patch). serialNumber es inmutable.
+      description: >-
+        Edición parcial (JSON Merge Patch). `serialNumber` es inmutable. Actualizar una dirección de
+        gestión la reemplaza por completo; no puede quedar el dispositivo sin ninguna (RF-05a).
       properties:
         assetTag: { type: string }
         hostname: { type: string, minLength: 1, maxLength: 255 }
-        mgmtIp: { type: string, minLength: 3, maxLength: 45, pattern: '^((25[0-5]|2[0-4]\d|[01]?\d?\d)\.){3}(25[0-5]|2[0-4]\d|[01]?\d?\d)$' }
+        managementIpv4: { $ref: "#/components/schemas/Ipv4Address" }
+        managementIpv6: { $ref: "#/components/schemas/Ipv6Address" }
         deviceType: { $ref: "#/components/schemas/DeviceType" }
         vendor: { type: string }
         model: { type: string }
