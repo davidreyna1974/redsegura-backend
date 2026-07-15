@@ -163,7 +163,7 @@ Validación del payload `asset.*` contra su JSON Schema (`contracts/asset-event.
 
 - **Ronda R1 certificada (2026-07-14):** Total **73** casos · ✅ PASS: **71** · N/A: **2** (RN-05/RN-07,
   imposibles por construcción) · ⏳ diferido: **0**. BSRCH-02 (acentos) cerrado con `unaccent` (V6)
-  tras la certificación. Verificado con `mvn verify` (**92 tests** automatizados, cobertura ≥70%,
+  tras la certificación. Verificado con `mvn verify` (**98 tests** automatizados, cobertura ≥70%,
   0 lint). Categorías `UI/VIS` son del repo `frontend`.
 - Cobertura de categorías: SEC, RBAC, CRUD, VAL, BSRCH, EMPTY, FLOW, RN, ERR, CYBER — completa
   (UI/VIS pertenecen al frontend).
