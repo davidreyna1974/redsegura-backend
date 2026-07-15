@@ -287,7 +287,7 @@ ETag/If-Match) y **gobernados en CI con Spectral** (`.spectral.yaml`, ADR-12); d
 ambos repos; repos publicados en GitHub (`redsegura-backend`,
 `redsegura-management`) con branch protection y esqueleto de CI.
 
-**`asset-inventory-service` — implementado y ✅ QA R1 certificado (98 tests, cobertura ≥ 70 %, CI activo):** contract-first
+**`asset-inventory-service` — implementado y ✅ QA R1 certificado (100 tests, cobertura ≥ 70 %, CI activo):** contract-first
 con openapi-generator (ADR-05); CRUD + búsqueda/filtros; RBAC por rol validado en el servicio;
 `ETag`/`If-Match` (ADR-09); idempotencia acotada por usuario + hash de cuerpo (RN9); **direccionamiento
 de gestión dual-stack IPv4/IPv6** (RF-05a/ADR-13: `managementIpv4`/`managementIpv6` con CIDR + gateway,
@@ -296,7 +296,11 @@ canonicalización IPv6 RFC 5952); redacción de direcciones por rol server-side 
 Prometheus, trazas, logs JSON — POM padre, RNF-15/16/17); eventos `asset.*` vía **transactional
 outbox** a RabbitMQ (RN11/ADR-04); importación masiva asíncrona (RF-04). El gate único es `mvn verify`
 (build + tests Testcontainers + cobertura + lint, todo ligado a la fase `verify`); el CI corre en
-push/PR y es **status check requerido** en `main`.
+push/PR y es **status check requerido** en `main`. **Verificación en vivo de los 10 endpoints** (curl/Postman
+sobre el entorno Docker Compose): 10/10 ✅ —
+`../management/documentos/qa/verificacion_endpoints_asset-inventory.md`; esa pasada detectó y corrigió
+`HALLAZGO-LIVE-01` (PUT no cumplía reemplazo completo RFC 9110 — campos omitidos no se nulificaban;
++2 tests de regresión).
 
 **Próximos pasos (en orden):**
 1. Resto de servicios de Fase A: `config-backup-service`, `compliance-audit-service`,

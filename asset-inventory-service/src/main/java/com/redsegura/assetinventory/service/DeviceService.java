@@ -186,7 +186,8 @@ public class DeviceService {
         req.getModel(),
         req.getAssetTag(),
         req.getLocation(),
-        req.getCriticality());
+        req.getCriticality(),
+        true);
   }
 
   /** Edición parcial (PATCH, JSON Merge Patch). */
@@ -203,7 +204,8 @@ public class DeviceService {
         req.getModel(),
         req.getAssetTag(),
         req.getLocation(),
-        req.getCriticality());
+        req.getCriticality(),
+        false);
   }
 
   /** Baja lógica (soft delete, RN6). */
@@ -217,9 +219,14 @@ public class DeviceService {
   }
 
   /**
-   * Aplica los campos no nulos a la entidad. {@code serialNumber} y {@code status} no se editan por
-   * API (RN2/RN7). Un dispositivo dado de baja no es editable (RN6). Se valida el {@code If-Match}
+   * Aplica los campos a la entidad. {@code serialNumber} y {@code status} no se editan por API
+   * (RN2/RN7). Un dispositivo dado de baja no es editable (RN6). Se valida el {@code If-Match}
    * contra la versión actual (RN8).
+   *
+   * <p>Si {@code fullReplace} (PUT, edición completa RFC 9110), los campos opcionales omitidos
+   * (direcciones de gestión, vendor, model, assetTag, location) se ponen en {@code null} — el
+   * recurso se reemplaza por entero. Si no (PATCH, JSON Merge Patch), solo se aplican los campos
+   * presentes.
    */
   private VersionedDevice applyUpdate(
       UUID id,
@@ -232,7 +239,8 @@ public class DeviceService {
       String model,
       String assetTag,
       com.redsegura.assetinventory.generated.model.Location location,
-      com.redsegura.assetinventory.generated.model.Criticality criticality) {
+      com.redsegura.assetinventory.generated.model.Criticality criticality,
+      boolean fullReplace) {
     var entity = getOrThrow(id);
     checkVersion(entity, expectedVersion);
     if (entity.getStatus() == DeviceStatus.BAJA) {
@@ -243,40 +251,51 @@ public class DeviceService {
       entity.setHostname(hostname);
       changedFields.add("hostname");
     }
-    if (managementIpv4 != null) {
+    if (fullReplace || managementIpv4 != null) {
       entity.setManagementIpv4(
-          ipNormalizer.normalizeIpv4(
-              managementIpv4.getAddress(),
-              managementIpv4.getPrefixLength(),
-              managementIpv4.getGateway()));
+          managementIpv4 == null
+              ? null
+              : ipNormalizer.normalizeIpv4(
+                  managementIpv4.getAddress(),
+                  managementIpv4.getPrefixLength(),
+                  managementIpv4.getGateway()));
       changedFields.add("managementIpv4");
     }
-    if (managementIpv6 != null) {
+    if (fullReplace || managementIpv6 != null) {
       entity.setManagementIpv6(
-          ipNormalizer.normalizeIpv6(
-              managementIpv6.getAddress(),
-              managementIpv6.getPrefixLength(),
-              managementIpv6.getGateway()));
+          managementIpv6 == null
+              ? null
+              : ipNormalizer.normalizeIpv6(
+                  managementIpv6.getAddress(),
+                  managementIpv6.getPrefixLength(),
+                  managementIpv6.getGateway()));
       changedFields.add("managementIpv6");
+    }
+    // Reemplazo completo (PUT, RFC 9110): tras fijar ambas, exige al menos una dirección (RF-05a).
+    if (fullReplace
+        && managementAddressAbsent(entity.getManagementIpv4())
+        && managementAddressAbsent(entity.getManagementIpv6())) {
+      throw new InvalidAddressException(
+          "Debe indicar al menos una dirección de gestión (managementIpv4 o managementIpv6)");
     }
     if (deviceType != null) {
       entity.setDeviceType(toDomainType(deviceType));
       changedFields.add("deviceType");
     }
-    if (vendor != null) {
+    if (fullReplace || vendor != null) {
       entity.setVendor(vendor);
       changedFields.add("vendor");
     }
-    if (model != null) {
+    if (fullReplace || model != null) {
       entity.setModel(model);
       changedFields.add("model");
     }
-    if (assetTag != null) {
+    if (fullReplace || assetTag != null) {
       entity.setAssetTag(assetTag);
       changedFields.add("assetTag");
     }
-    if (location != null) {
-      entity.setLocation(toDomainLocation(location));
+    if (fullReplace || location != null) {
+      entity.setLocation(location == null ? null : toDomainLocation(location));
       changedFields.add("location");
     }
     if (criticality != null) {

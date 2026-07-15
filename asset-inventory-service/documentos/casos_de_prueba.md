@@ -5,9 +5,11 @@
 > [`../openapi.yaml`](../openapi.yaml). Reglas: propuesta de módulo §5 (RN1..RN11).
 
 **Módulo:** asset-inventory-service · **Ronda:** R1 (2026-07-14) + **R1.1** (2026-07-15) **✅
-CERTIFICADA** · **Fecha:** 2026-07-12 · **Versión de código:** `develop` congelado; 98 tests
-automatizados en verde. Reporte consolidado:
-[`../../../management/documentos/qa/reporte_qa.md`](../../../management/documentos/qa/reporte_qa.md).
+CERTIFICADA** · **Fecha:** 2026-07-12 · **Versión de código:** `develop`; 100 tests automatizados en
+verde (98 de la R1.1 + 2 de regresión `CRUD-04b`/`CRUD-04c` tras la verificación en vivo de endpoints,
+`HALLAZGO-LIVE-01`). Reporte consolidado:
+[`../../../management/documentos/qa/reporte_qa.md`](../../../management/documentos/qa/reporte_qa.md) ·
+verificación en vivo: [`../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md`](../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md).
 
 **Estados:** `✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `⚠️ ABIERTO` · `N/A`.
 **Roles:** ADM=Administrador · OPE=Operador · AUD=Auditor.
@@ -98,6 +100,8 @@ automatizados en verde. Reporte consolidado:
 | ID | Unidad | Cat. | Descripción | Rol(es) | Resultado esperado | Estado |
 |---|---|---|---|---|---|---|
 | CRUD-04 | PUT /devices/{id} | CRUD | Edición completa con `If-Match` válido | ADM | 200 + nuevo `ETag`; cambios persistidos | ✅ |
+| CRUD-04b | PUT /devices/{id} | CRUD | **Reemplazo completo (RFC 9110):** PUT con solo IPv6 → campos omitidos (`managementIpv4`, `vendor`, `model`) quedan en `null` | ADM | 200; IPv4 y demás omitidos → `null`; IPv6 fijado | ✅ |
+| CRUD-04c | PUT /devices/{id} | RN | PUT que dejaría al dispositivo **sin ninguna dirección** de gestión (RF-05a) | ADM | **422** `ADDRESS_INVALID` | ✅ |
 | CRUD-05 | PATCH /devices/{id} | CRUD | Edición parcial (JSON Merge Patch) | ADM | 200; solo cambian campos enviados | ✅ |
 | SEC-03 | PATCH /devices/{id} | SEC | Editar con rol sin permiso | OPE, AUD | **403** | ✅ |
 | RN-05 | PUT /devices/{id} | RN | Intento de cambiar `serialNumber` (RN2, inmutable) | ADM | Imposible por construcción: el DTO de edición no expone `serialNumber` | N/A |
@@ -164,7 +168,12 @@ Validación del payload `asset.*` contra su JSON Schema (`contracts/asset-event.
 
 - **Ronda R1 certificada (2026-07-14):** Total **73** casos · ✅ PASS: **71** · N/A: **2** (RN-05/RN-07,
   imposibles por construcción) · ⏳ diferido: **0**. BSRCH-02 (acentos) cerrado con `unaccent` (V6)
-  tras la certificación. Verificado con `mvn verify` (**98 tests** automatizados, cobertura ≥70%,
-  0 lint). Categorías `UI/VIS` son del repo `frontend`.
+  tras la certificación. Verificado con `mvn verify` (**100 tests** automatizados —98 + 2 de
+  regresión PUT `CRUD-04b`/`CRUD-04c`—, cobertura ≥70%, 0 lint). Categorías `UI/VIS` son del repo
+  `frontend`.
+- **Verificación en vivo de endpoints (2026-07-15):** los 10 endpoints por HTTP real
+  (curl/Postman) contra el entorno Docker Compose → 10/10 ✅. Detectó `HALLAZGO-LIVE-01` (PUT no
+  cumplía reemplazo completo RFC 9110), corregido + regresión. Detalle:
+  [`../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md`](../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md).
 - Cobertura de categorías: SEC, RBAC, CRUD, VAL, BSRCH, EMPTY, FLOW, RN, ERR, CYBER — completa
   (UI/VIS pertenecen al frontend).
