@@ -38,6 +38,11 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 - **Gate de calidad ligado a `verify`:** `spotless:check` + `checkstyle:check` se ejecutan en la
   fase `verify` del POM padre → `mvn verify` es el gatekeeper único e insaltable (antes el lint
   vivía solo en `pluginManagement` y podía saltarse).
+- **Contrato `asset-inventory` — direccionamiento dual-stack (RF-05a/ADR-13, _implementación
+  pendiente_):** `mgmtIp` (string IPv4) → `managementIpv4` y/o `managementIpv6`, cada uno con
+  `address` + `prefixLength` (CIDR) + `gateway` (estilo NetBox). Al menos una obligatoria; IPv6
+  canonicalizada (RFC 5952). Ajusta el payload de eventos `asset.*` (→ `version` 1.1.0). Contrato y
+  especificación actualizados; el código se implementa a continuación.
 
 ### Añadido (fundación)
 - Inicialización del monorepo backend con `CLAUDE.md`, `.gitignore` poliglota y git-hook

@@ -204,9 +204,16 @@ con polling, RBAC 403, 422 lote vacío, 404 job, replay idempotente), cobertura 
 - **Observabilidad — exportadores:** activar el exportador OTLP a Jaeger y el scrape de Prometheus
   por entorno (Docker Compose / k8s) cuando exista el stack; extraer `logback-spring.xml` a un módulo
   commons al scaffoldear el segundo servicio Java.
+- **RF-05a — direccionamiento dual-stack IPv4/IPv6 (ADR-13):** **contrato y especificación
+  documentados**; pendiente la implementación. Reemplaza `mgmtIp` (string IPv4) por `managementIpv4`
+  y/o `managementIpv6` (dirección + `prefixLength` CIDR + `gateway`), al estilo NetBox. Requiere:
+  modelo/entidad dual-stack (Flyway V5), canonicalización IPv6 (RFC 5952) para unicidad real,
+  validación por familia (`java.net.InetAddress` → 422), redacción por familia (host enmascarado
+  según prefijo), filtro de búsqueda por ambas familias, y ajuste del payload de eventos `asset.*`
+  (→ `version` 1.1.0). Regenerar DTOs desde el contrato.
 - **Mensajería:** publisher confirms (marcar publicado tras ACK); Pact del contrato de eventos `asset.*`.
 - **Robustez BD (menor):** CHECK constraints de enums/`rack_unit`, índices en `loc_site`/`loc_rack`.
-- **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`), soporte **IPv6** en `mgmtIp`.
+- **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`).
 
 **Hito 3b — contract-first estricto (ADR-05):** se cableó **openapi-generator**. El contrato genera
 las interfaces de API (`DevicesApi`) y los DTOs; el `DeviceController` **implementa** la interfaz

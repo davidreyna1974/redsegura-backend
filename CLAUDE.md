@@ -280,7 +280,7 @@ microservicio) con toda la superficie funcional del contrato **implementada**; l
 sin iniciar.
 
 **Fundación completada:** arquitectura global documentada (memoria técnica, diagrama,
-estándares, eventos, protocolo de QA — en `management`, **ADR-01..12**); POM padre del monorepo
+estándares, eventos, protocolo de QA — en `management`, **ADR-01..13**); POM padre del monorepo
 (Java 21, Spring Boot 3.3.5, calidad, MapStruct); **5 contratos OpenAPI de Fase A** validados y
 **sintonizados con estándares de industria** (RFC 7807, health probes, Idempotency-Key,
 ETag/If-Match) y **gobernados en CI con Spectral** (`.spectral.yaml`, ADR-12); documentación de
@@ -297,16 +297,19 @@ masiva asíncrona (RF-04). El gate único es `mvn verify` (build + tests Testcon
 lint, todo ligado a la fase `verify`); el CI corre en push/PR y es **status check requerido** en `main`.
 
 **Próximos pasos (en orden):**
-1. `asset-inventory-service`: **certificación QA de 4 fases** (versión congelada) y Pact (cuando
+1. `asset-inventory-service`: **RF-05a — direccionamiento dual-stack IPv4/IPv6** (ADR-13). Contrato
+   y especificación **ya documentados**; pendiente la implementación (modelo dual-stack +
+   canonicalización IPv6 + redacción por familia + tests).
+2. `asset-inventory-service`: **certificación QA de 4 fases** (versión congelada) y Pact (cuando
    exista el primer consumidor).
-2. Resto de servicios de Fase A: `config-backup-service`, `compliance-audit-service`,
+3. Resto de servicios de Fase A: `config-backup-service`, `compliance-audit-service`,
    `alerting-service`, `notification-service`.
-3. Golden path de extremo a extremo en Docker Compose.
+4. Golden path de extremo a extremo en Docker Compose.
 
 > **Deuda de producción registrada** (memoria técnica del módulo): validación `issuer`/`audience`
 > del JWT; exportadores de observabilidad por entorno (OTLP→Jaeger, scrape Prometheus) + extraer
 > `logback-spring.xml` a un commons; publisher confirms del outbox; CHECK constraints/índices menores;
-> búsqueda insensible a acentos e IPv6.
+> búsqueda insensible a acentos.
 
 > **Mantenimiento:** ante cualquier cambio, seguir el Protocolo de 4 fases y
 > actualizar la memoria técnica del microservicio afectado + la memoria
