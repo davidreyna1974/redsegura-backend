@@ -39,11 +39,11 @@ consolidado: [`../../../management/documentos/qa/reporte_qa.md`](../../../manage
 | VAL-01 | POST /devices | VAL | Falta `serialNumber` | ADM | 422, sin crear | ✅ |
 | VAL-02 | POST /devices | VAL | Falta `hostname`/`mgmtIp`/`deviceType`/`criticality` | ADM | 422 por cada requerido | ✅ |
 | VAL-03 | POST /devices | VAL | `criticality` fuera de enum | ADM | **400** (JSON no deserializable; sin fuga) | ✅ |
-| VAL-04 | POST /devices | VAL | `deviceType` fuera de enum | ADM | **400** (mismo mecanismo que VAL-03) | ✅ |
+| VAL-04 | POST /devices | VAL | `deviceType` fuera de enum | ADM | **400** (test 1:1 con `deviceType`) | ✅ |
 | VAL-05 | POST /devices | VAL | `mgmtIp` con formato inválido (RN5) | ADM | 422 | ✅ |
 | VAL-06 | POST /devices | VAL | `rackUnit` fuera de rango (1–60) | ADM | 422 | ✅ |
 | RN-01 | POST /devices | RN | `serialNumber` duplicado (RN1) | ADM | **409** `DEVICE_ALREADY_EXISTS` | ✅ |
-| RN-02 | POST /devices | RN | `hostname` o `mgmtIp` duplicado (RN1) | ADM | **409** | ✅ |
+| RN-02 | POST /devices | RN | `hostname` duplicado (RN1) — test 1:1 | ADM | **409** `DEVICE_ALREADY_EXISTS` | ✅ |
 | RN-03 | POST /devices | RN | Alta confirmada escribe `asset.created` en outbox (RN11) | ADM | Fila outbox con sobre correcto en la misma transacción | ✅ |
 | RN-03b | (relay) | RN | El relay publica el evento pendiente al broker (RN11) | — | `asset.created` llega a cola `asset.*`; fila marcada publicada | ✅ |
 | RN-03c | PATCH/DELETE | RN | Edición/baja escriben `asset.updated` (con `changedFields`) / `asset.decommissioned` | ADM | Evento correcto en outbox | ✅ |
@@ -73,7 +73,7 @@ consolidado: [`../../../management/documentos/qa/reporte_qa.md`](../../../manage
 |---|---|---|---|---|---|---|
 | CRUD-02 | GET /devices | CRUD | Listado paginado | ADM, OPE, AUD | 200 sobre de paginación estándar | ✅ |
 | BSRCH-01 | GET /devices | BSRCH | Filtro por `hostname` parcial (insensible a mayúsculas) | ADM | Coincidencias parciales | ✅ |
-| BSRCH-02 | GET /devices | BSRCH | Filtro insensible a **acentos** | ADM | `galon` encuentra `Galón` | ⏳ (pendiente `unaccent`) |
+| BSRCH-02 | GET /devices | BSRCH | Filtro insensible a **acentos** | ADM | `galon` encuentra `Galón` (`unaccent`, Flyway V6) | ✅ |
 | BSRCH-03 | GET /devices | BSRCH | Filtros `deviceType`, `site`, `rack`, `criticidad`, `estado` | ADM | Resultados correctos (AND) | ✅ |
 | BSRCH-05 | GET /devices | BSRCH | Filtro por `fabricante`/`modelo` (parcial, insensible) | ADM, OPE, AUD | Solo el fabricante buscado | ✅ |
 | BSRCH-04 | GET /devices | EMPTY | Búsqueda sin coincidencias | ADM | 200 lista vacía (distinto de "sin datos") | ✅ |
@@ -151,9 +151,9 @@ consolidado: [`../../../management/documentos/qa/reporte_qa.md`](../../../manage
 
 ## Resumen de la ronda
 
-- **Ronda R1 certificada (2026-07-14):** Total **73** casos · ✅ PASS: **70** · N/A: **2** (RN-05/RN-07,
-  imposibles por construcción) · ⏳ diferido: **1** (BSRCH-02 búsqueda insensible a acentos — requiere
-  `unaccent`, deuda documentada). Verificado sobre build congelado con `mvn verify` (82 tests
-  automatizados, cobertura ≥70%, 0 lint). Categorías `UI/VIS/BSRCH-visual` son del repo `frontend`.
+- **Ronda R1 certificada (2026-07-14):** Total **73** casos · ✅ PASS: **71** · N/A: **2** (RN-05/RN-07,
+  imposibles por construcción) · ⏳ diferido: **0**. BSRCH-02 (acentos) cerrado con `unaccent` (V6)
+  tras la certificación. Verificado con `mvn verify` (**85 tests** automatizados, cobertura ≥70%,
+  0 lint). Categorías `UI/VIS` son del repo `frontend`.
 - Cobertura de categorías: SEC, RBAC, CRUD, VAL, BSRCH, EMPTY, FLOW, RN, ERR, CYBER — completa
   (UI/VIS pertenecen al frontend).

@@ -181,6 +181,36 @@ class DeviceCertificationIT extends AbstractIntegrationTest {
         .andExpect(status().isBadRequest());
   }
 
+  // ---- VAL-04: deviceType fuera de enum -> 400 ----
+  @Test
+  void create_invalidDeviceTypeEnum_returns400() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"serialNumber\":\"S1\",\"hostname\":\"SW1\",\"managementIpv4\":"
+                        + "{\"address\":\"10.0.0.1\",\"prefixLength\":24},\"deviceType\":\"MAINFRAME\","
+                        + "\"criticality\":\"ALTA\"}"))
+        .andExpect(status().isBadRequest());
+  }
+
+  // ---- RN-02: hostname duplicado -> 409 ----
+  @Test
+  void create_duplicateHostname_returns409() throws Exception {
+    createDevice("S1", "SW-DUP", "10.0.0.1");
+
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(createBody("S2", "SW-DUP", "10.0.0.2")))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code", is("DEVICE_ALREADY_EXISTS")));
+  }
+
   // ---- VAL-07: tamaño de página por encima del máximo del contrato (100) -> 422 ----
   @Test
   void list_sizeAboveMax_returns422() throws Exception {

@@ -178,6 +178,20 @@ class DeviceServiceIT extends AbstractIntegrationTest {
     assertThat(page.getTotalElements()).isEqualTo(1);
   }
 
+  /** BSRCH-02: la búsqueda por hostname es insensible a acentos además de mayúsculas. */
+  @Test
+  void search_isAccentInsensitive() {
+    service.create(req("S1", "Galón-Core", "10.0.0.1"), null);
+    service.create(req("S2", "RT-EDGE", "10.0.0.2"), null);
+
+    var page =
+        service.search(
+            "galon", null, null, null, null, null, null, null, null, null, PageRequest.of(0, 20));
+
+    assertThat(page.getContent()).hasSize(1);
+    assertThat(page.getContent().get(0).getHostname()).isEqualTo("Galón-Core");
+  }
+
   /** El filtro por fabricante (vendor) es parcial e insensible a mayúsculas. */
   @Test
   void search_filtersByVendor() {

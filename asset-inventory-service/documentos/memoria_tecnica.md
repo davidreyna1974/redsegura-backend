@@ -4,7 +4,7 @@
 > Memoria de "qué se hizo y por qué". Referencias: [`propuesta_modulo.md`](propuesta_modulo.md),
 > [`casos_de_prueba.md`](casos_de_prueba.md), [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 82 tests, cobertura ≥ 70 %, CI
+**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 85 tests, cobertura ≥ 70 %, CI
 activo · **Última actualización:** 2026-07-14
 
 ## 1. Contexto y justificación
@@ -228,7 +228,8 @@ unicidad IPv6 por forma textual, redacción IPv6), cobertura ≥70%, 0 Checkstyl
   commons al scaffoldear el segundo servicio Java.
 - **Mensajería:** publisher confirms (marcar publicado tras ACK); Pact del contrato de eventos `asset.*`.
 - **Robustez BD (menor):** CHECK constraints de enums/`rack_unit`, índices en `loc_site`/`loc_rack`.
-- **Funcional (menor):** búsqueda insensible a **acentos** (`unaccent`).
+- **Rendimiento de búsqueda (menor):** índice GIN `pg_trgm` para los `LIKE %term%` (hoy la búsqueda
+  insensible a acentos —`unaccent`, V6— es correcta pero sin índice para el comodín inicial).
 
 **Hito 3b — contract-first estricto (ADR-05):** se cableó **openapi-generator**. El contrato genera
 las interfaces de API (`DevicesApi`) y los DTOs; el `DeviceController` **implementa** la interfaz
@@ -271,7 +272,7 @@ fuga de internos (RNF-09); Flyway; inyección por constructor.
 ## 10. Cumplimiento y validación (definición de "done") — ✅ QA R1 certificada (2026-07-14)
 ```
 [x] Todos los casos de prueba en ✅ PASS (casos_de_prueba.md — 70/73 PASS, 2 N/A, 1 diferido BSRCH-02).
-[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 82 tests.
+[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 85 tests.
 [x] Verificación por rol/condición ejecutada y documentada (ADM/OPE/AUD).
 [x] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción de direcciones).
 [~] Gobernanza Spectral en verde. **Pact (eventos asset.*): pendiente** hasta que exista el primer consumidor.
