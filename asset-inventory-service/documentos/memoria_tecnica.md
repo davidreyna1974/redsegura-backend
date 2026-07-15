@@ -4,7 +4,7 @@
 > Memoria de "qué se hizo y por qué". Referencias: [`propuesta_modulo.md`](propuesta_modulo.md),
 > [`casos_de_prueba.md`](casos_de_prueba.md), [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 85 tests, cobertura ≥ 70 %, CI
+**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 92 tests, cobertura ≥ 70 %, CI
 activo · **Última actualización:** 2026-07-14
 
 ## 1. Contexto y justificación
@@ -48,8 +48,12 @@ Patrón `controller → service → repository` (estándares §3.1):
 
 ## 4. Contratos con dependencias
 - **API propia:** `../openapi.yaml` (validado; gobernado por Spectral).
-- **Eventos publicados** (verificados contra `comunicacion_por_eventos.md §4.1`):
-  `asset.created` / `asset.updated` (+`changedFields`) / `asset.decommissioned`.
+- **Eventos publicados** (`asset.created` / `asset.updated` +`changedFields` / `asset.decommissioned`),
+  **sobre `version` 1.1.0** (payload dual-stack). Formalizados como **JSON Schema**
+  (`src/test/resources/contracts/asset-event.schema.json`) y verificados por `AssetEventContractIT`
+  (conformidad productor-side, happy/edge/sad): cada evento emitido valida contra el schema, un
+  payload malformado se rechaza (schema con dientes), y una operación fallida no emite evento. Es la
+  parte "tipo Pact" que sí se puede sin consumidor; el Pact consumer-driven llega con `config-backup`.
 - **Identidad:** JWT (Keycloak), claim de rol `ADM`/`OPE`/`AUD`.
 - **No consume** la API de ningún otro servicio (es la fuente de verdad).
 
@@ -272,7 +276,7 @@ fuga de internos (RNF-09); Flyway; inyección por constructor.
 ## 10. Cumplimiento y validación (definición de "done") — ✅ QA R1 certificada (2026-07-14)
 ```
 [x] Todos los casos de prueba en ✅ PASS (casos_de_prueba.md — 70/73 PASS, 2 N/A, 1 diferido BSRCH-02).
-[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 85 tests.
+[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 92 tests.
 [x] Verificación por rol/condición ejecutada y documentada (ADM/OPE/AUD).
 [x] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción de direcciones).
 [~] Gobernanza Spectral en verde. **Pact (eventos asset.*): pendiente** hasta que exista el primer consumidor.

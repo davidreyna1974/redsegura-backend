@@ -72,7 +72,7 @@ class OutboxWriteIT extends AbstractIntegrationTest {
 
     JsonNode envelope = envelopeOf(event);
     assertThat(envelope.get("eventType").asText()).isEqualTo("asset.created");
-    assertThat(envelope.get("version").asText()).isEqualTo("1.0.0");
+    assertThat(envelope.get("version").asText()).isEqualTo("1.1.0");
     assertThat(envelope.get("source").asText()).isEqualTo("asset-inventory-service");
     assertThat(envelope.hasNonNull("eventId")).isTrue();
 

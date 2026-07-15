@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://redsegura/contracts/asset-event.schema.json",
+  "title": "Evento asset.* (productor: asset-inventory-service)",
+  "description": "Formaliza el sobre común (§3.3) y el payload asset.* (§4.1) del catálogo de eventos. version 1.1.0 (dual-stack).",
+  "type": "object",
+  "required": ["eventId", "eventType", "version", "occurredAt", "source", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1 },
+    "eventType": {
+      "type": "string",
+      "enum": ["asset.created", "asset.updated", "asset.decommissioned"]
+    },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "occurredAt": { "type": "string", "minLength": 1 },
+    "traceId": { "type": ["string", "null"] },
+    "source": { "type": "string", "const": "asset-inventory-service" },
+    "payload": { "$ref": "#/$defs/payload" }
+  },
+  "$defs": {
+    "payload": {
+      "type": "object",
+      "required": ["deviceId", "hostname", "criticality", "status"],
+      "additionalProperties": false,
+      "anyOf": [
+        { "required": ["managementIpv4"] },
+        { "required": ["managementIpv6"] }
+      ],
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1 },
+        "hostname": { "type": "string", "minLength": 1 },
+        "managementIpv4": { "$ref": "#/$defs/address" },
+        "managementIpv6": { "$ref": "#/$defs/address" },
+        "vendor": { "type": ["string", "null"] },
+        "model": { "type": ["string", "null"] },
+        "location": { "type": ["string", "null"] },
+        "criticality": { "type": "string", "enum": ["ALTA", "MEDIA", "BAJA"] },
+        "status": { "type": "string", "enum": ["ACTIVO", "BAJA"] },
+        "changedFields": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "address": {
+      "type": "object",
+      "required": ["address", "prefixLength"],
+      "additionalProperties": false,
+      "properties": {
+        "address": { "type": "string", "minLength": 1 },
+        "prefixLength": { "type": "integer", "minimum": 0, "maximum": 128 },
+        "gateway": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

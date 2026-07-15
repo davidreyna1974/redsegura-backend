@@ -140,6 +140,16 @@ consolidado: [`../../../management/documentos/qa/reporte_qa.md`](../../../manage
 | CYBER-04 | (escritura) | CYBER | Autorización validada server-side, no asumida del Gateway | AUD | 403 aunque el Gateway no filtrara | ✅ |
 | SEC-06 | (denegaciones) | SEC | Acceso denegado y auth fallida se registran en log de seguridad (ADR-11) | AUD | Entrada `security` con actor/hora (`event=access_denied`) | ✅ |
 
+## Conformidad de contrato de eventos (productor-side, "mini Pact")
+
+Validación del payload `asset.*` contra su JSON Schema (`contracts/asset-event.schema.json`).
+
+| ID | Cat. | Descripción | Resultado esperado | Estado |
+|---|---|---|---|---|
+| EVT-01 | happy | create/update/decommission emiten evento válido | 0 errores de schema; `version` 1.1.0; `changedFields` en update | ✅ |
+| EVT-02 | edge | solo-IPv6 y dual-stack | validan; familias opcionales presentes/ausentes según el caso | ✅ |
+| EVT-03 | sad | (1) operación fallida no emite evento; (2) payload malformado | (1) 0 eventos nuevos; (2) el schema **rechaza** (tiene dientes) | ✅ |
+
 ---
 
 ## Patrones que han causado bugs reales (revisar siempre)
@@ -153,7 +163,7 @@ consolidado: [`../../../management/documentos/qa/reporte_qa.md`](../../../manage
 
 - **Ronda R1 certificada (2026-07-14):** Total **73** casos · ✅ PASS: **71** · N/A: **2** (RN-05/RN-07,
   imposibles por construcción) · ⏳ diferido: **0**. BSRCH-02 (acentos) cerrado con `unaccent` (V6)
-  tras la certificación. Verificado con `mvn verify` (**85 tests** automatizados, cobertura ≥70%,
+  tras la certificación. Verificado con `mvn verify` (**92 tests** automatizados, cobertura ≥70%,
   0 lint). Categorías `UI/VIS` son del repo `frontend`.
 - Cobertura de categorías: SEC, RBAC, CRUD, VAL, BSRCH, EMPTY, FLOW, RN, ERR, CYBER — completa
   (UI/VIS pertenecen al frontend).
