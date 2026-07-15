@@ -8,6 +8,8 @@ import com.redsegura.assetinventory.exception.InvalidAddressException;
 import com.redsegura.assetinventory.exception.InvalidRequestException;
 import com.redsegura.assetinventory.exception.JobNotFoundException;
 import com.redsegura.assetinventory.exception.PreconditionFailedException;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -55,6 +57,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   @ExceptionHandler(InvalidRequestException.class)
   ProblemDetail handleInvalidRequest(InvalidRequestException ex) {
     return problem(HttpStatus.BAD_REQUEST, "Petición inválida", ex.getMessage(), "INVALID_REQUEST");
+  }
+
+  /** Violación de restricciones en parámetros de query (p. ej. `size` > máximo) -> 422. */
+  @ExceptionHandler(ConstraintViolationException.class)
+  ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
+    ProblemDetail pd =
+        ProblemDetail.forStatusAndDetail(
+            HttpStatus.UNPROCESSABLE_ENTITY, "Uno o más parámetros son inválidos");
+    pd.setTitle("Validación fallida");
+    pd.setProperty("code", "VALIDATION_ERROR");
+    List<String> errors =
+        ex.getConstraintViolations().stream().map(GlobalExceptionHandler::formatViolation).toList();
+    pd.setProperty("errors", errors);
+    return pd;
+  }
+
+  private static String formatViolation(ConstraintViolation<?> violation) {
+    String path = violation.getPropertyPath().toString();
+    String field = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+    return field + ": " + violation.getMessage();
   }
 
   /** Dirección de gestión inválida (formato/familia/ninguna presente, RF-05a) -> 422. */

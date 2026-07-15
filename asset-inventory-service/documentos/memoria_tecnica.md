@@ -4,8 +4,8 @@
 > Memoria de "qué se hizo y por qué". Referencias: [`propuesta_modulo.md`](propuesta_modulo.md),
 > [`casos_de_prueba.md`](casos_de_prueba.md), [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** implementado (57 tests, cobertura ≥ 70 %, CI activo); pendiente certificación QA de 4
-fases · **Última actualización:** 2026-07-14
+**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 82 tests, cobertura ≥ 70 %, CI
+activo · **Última actualización:** 2026-07-14
 
 ## 1. Contexto y justificación
 `asset-inventory-service` mantiene el **inventario único de activos de red** — la **fuente de
@@ -268,12 +268,13 @@ Idempotency/ETag (ADR-09), probes (ADR-10), redacción + log de seguridad (ADR-1
 Spectral (ADR-12), transactional outbox (ADR-04); logging estructurado (RNF-17); errores sin
 fuga de internos (RNF-09); Flyway; inyección por constructor.
 
-## 10. Cumplimiento y validación (definición de "done")
+## 10. Cumplimiento y validación (definición de "done") — ✅ QA R1 certificada (2026-07-14)
 ```
-[ ] Todos los casos de prueba en ✅ PASS (casos_de_prueba.md — 43 casos).
-[ ] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 %.
-[ ] Verificación por rol/condición ejecutada y documentada (ADM/OPE/AUD).
-[ ] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción de direcciones).
-[ ] Contratos verificados con Pact (eventos asset.*) y gobernanza Spectral en verde.
-[ ] Memoria global actualizada si hubo decisiones transversales.
+[x] Todos los casos de prueba en ✅ PASS (casos_de_prueba.md — 70/73 PASS, 2 N/A, 1 diferido BSRCH-02).
+[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 82 tests.
+[x] Verificación por rol/condición ejecutada y documentada (ADM/OPE/AUD).
+[x] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción de direcciones).
+[~] Gobernanza Spectral en verde. **Pact (eventos asset.*): pendiente** hasta que exista el primer consumidor.
+[x] Memoria global actualizada (ADR-13, lecciones L03/L04/L-QA-01..03, reporte de QA).
 ```
+> Reporte consolidado: [`../../../management/documentos/qa/reporte_qa.md`](../../../management/documentos/qa/reporte_qa.md).

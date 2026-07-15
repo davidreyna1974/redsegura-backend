@@ -287,7 +287,7 @@ ETag/If-Match) y **gobernados en CI con Spectral** (`.spectral.yaml`, ADR-12); d
 ambos repos; repos publicados en GitHub (`redsegura-backend`,
 `redsegura-management`) con branch protection y esqueleto de CI.
 
-**`asset-inventory-service` — implementado (65 tests, cobertura ≥ 70 %, CI activo):** contract-first
+**`asset-inventory-service` — implementado y ✅ QA R1 certificado (82 tests, cobertura ≥ 70 %, CI activo):** contract-first
 con openapi-generator (ADR-05); CRUD + búsqueda/filtros; RBAC por rol validado en el servicio;
 `ETag`/`If-Match` (ADR-09); idempotencia acotada por usuario + hash de cuerpo (RN9); **direccionamiento
 de gestión dual-stack IPv4/IPv6** (RF-05a/ADR-13: `managementIpv4`/`managementIpv6` con CIDR + gateway,
@@ -299,11 +299,11 @@ outbox** a RabbitMQ (RN11/ADR-04); importación masiva asíncrona (RF-04). El ga
 push/PR y es **status check requerido** en `main`.
 
 **Próximos pasos (en orden):**
-1. `asset-inventory-service`: **certificación QA de 4 fases** (versión congelada) y Pact (cuando
-   exista el primer consumidor).
-2. Resto de servicios de Fase A: `config-backup-service`, `compliance-audit-service`,
+1. Resto de servicios de Fase A: `config-backup-service`, `compliance-audit-service`,
    `alerting-service`, `notification-service`.
-3. Golden path de extremo a extremo en Docker Compose.
+2. Golden path de extremo a extremo en Docker Compose.
+3. Pendiente de `asset-inventory-service`: Pact (al existir el primer consumidor); búsqueda
+   insensible a acentos (BSRCH-02, `unaccent`) y demás deuda de producción registrada.
 
 > **Deuda de producción registrada** (memoria técnica del módulo): validación `issuer`/`audience`
 > del JWT; exportadores de observabilidad por entorno (OTLP→Jaeger, scrape Prometheus) + extraer

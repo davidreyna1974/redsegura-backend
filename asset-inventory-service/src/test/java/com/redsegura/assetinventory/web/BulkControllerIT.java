@@ -134,6 +134,27 @@ class BulkControllerIT extends AbstractIntegrationTest {
         .andExpect(status().isUnprocessableEntity());
   }
 
+  /** VAL-08b: lote > 1000 (maxItems del contrato) -> 422. */
+  @Test
+  void bulkImport_over1000_returns422() throws Exception {
+    StringBuilder sb = new StringBuilder("{\"devices\":[");
+    for (int i = 0; i < 1001; i++) {
+      if (i > 0) {
+        sb.append(",");
+      }
+      sb.append(device("S" + i, "SW" + i, "10.0.0.1"));
+    }
+    sb.append("]}");
+
+    mockMvc
+        .perform(
+            post("/api/v1/devices/bulk")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(sb.toString()))
+        .andExpect(status().isUnprocessableEntity());
+  }
+
   /** ERR: job inexistente -> 404 problem+json. */
   @Test
   void getJob_unknown_returns404() throws Exception {
