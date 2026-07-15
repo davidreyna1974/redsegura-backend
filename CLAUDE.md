@@ -287,7 +287,7 @@ ETag/If-Match) y **gobernados en CI con Spectral** (`.spectral.yaml`, ADR-12); d
 ambos repos; repos publicados en GitHub (`redsegura-backend`,
 `redsegura-management`) con branch protection y esqueleto de CI.
 
-**`asset-inventory-service` — implementado y ✅ QA R1 certificado (92 tests, cobertura ≥ 70 %, CI activo):** contract-first
+**`asset-inventory-service` — implementado y ✅ QA R1 certificado (98 tests, cobertura ≥ 70 %, CI activo):** contract-first
 con openapi-generator (ADR-05); CRUD + búsqueda/filtros; RBAC por rol validado en el servicio;
 `ETag`/`If-Match` (ADR-09); idempotencia acotada por usuario + hash de cuerpo (RN9); **direccionamiento
 de gestión dual-stack IPv4/IPv6** (RF-05a/ADR-13: `managementIpv4`/`managementIpv6` con CIDR + gateway,
