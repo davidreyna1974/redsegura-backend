@@ -174,13 +174,24 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
 [ ] La autorización se valida en el backend, no se asume que el API Gateway ya filtró todo.
 ```
 
-**D — Definición de "done" (no ofrecer continuar hasta cumplir las 4):**
+**D — Definición de "done" (no ofrecer continuar hasta cumplir las 5):**
 ```
 [ ] 1. Todos los casos de prueba en ✅ PASS.
 [ ] 2. Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70%.
 [ ] 3. Si el servicio expone o consume un contrato (API/evento), verificado con Pact.
 [ ] 4. Documentación del microservicio (propuesta + casos + memoria técnica) actualizada.
+[ ] 5. Verificación EN VIVO de TODOS los endpoints (curl/Postman sobre docker-compose.dev.yml,
+       con JWT reales de Keycloak) → reporte qa/verificacion_endpoints_<servicio>.md + colección
+       Postman en deploy/postman/. Complementa (no sustituye) los tests automatizados; cubre
+       despliegue/config/semántica HTTP (PUT=reemplazo completo vs PATCH=merge). Ver
+       ../management/documentos/qa/estrategia_de_pruebas.md §1b.
 ```
+
+> **E — Tipos de test obligatorios por microservicio** (además de A–D): la batería de pruebas de
+> `asset-inventory-service` es el **patrón replicable** para todos: unit + integración
+> (Testcontainers) + conformidad de contrato (API + eventos) + aceptación BDD (Cucumber) +
+> **verificación en vivo de endpoints** + 4 fases de QA. Detalle y particularidades por servicio en
+> `../management/documentos/qa/estrategia_de_pruebas.md`.
 
 ---
 
