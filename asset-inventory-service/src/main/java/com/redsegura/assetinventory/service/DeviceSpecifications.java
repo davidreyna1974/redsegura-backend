@@ -4,6 +4,9 @@ import com.redsegura.assetinventory.domain.Criticality;
 import com.redsegura.assetinventory.domain.Device;
 import com.redsegura.assetinventory.domain.DeviceStatus;
 import com.redsegura.assetinventory.domain.DeviceType;
+import jakarta.persistence.criteria.CriteriaBuilder;
+import jakarta.persistence.criteria.Expression;
+import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,8 +42,7 @@ public final class DeviceSpecifications {
     return (root, query, cb) -> {
       List<Predicate> predicates = new ArrayList<>();
       if (hostname != null && !hostname.isBlank()) {
-        predicates.add(
-            cb.like(cb.lower(root.get("hostname")), containsPattern(hostname), LIKE_ESCAPE));
+        predicates.add(accentInsensitiveContains(cb, root.get("hostname"), hostname));
       }
       if (mgmtIp != null && !mgmtIp.isBlank()) {
         // Coincidencia por dirección de gestión IPv4 o IPv6 (RF-05a). El valor ya viene
@@ -66,10 +68,10 @@ public final class DeviceSpecifications {
         predicates.add(cb.equal(root.get("criticality"), criticality));
       }
       if (vendor != null && !vendor.isBlank()) {
-        predicates.add(cb.like(cb.lower(root.get("vendor")), containsPattern(vendor), LIKE_ESCAPE));
+        predicates.add(accentInsensitiveContains(cb, root.get("vendor"), vendor));
       }
       if (model != null && !model.isBlank()) {
-        predicates.add(cb.like(cb.lower(root.get("model")), containsPattern(model), LIKE_ESCAPE));
+        predicates.add(accentInsensitiveContains(cb, root.get("model"), model));
       }
       if (status != null) {
         predicates.add(cb.equal(root.get("status"), status));
@@ -78,6 +80,18 @@ public final class DeviceSpecifications {
       }
       return cb.and(predicates.toArray(new Predicate[0]));
     };
+  }
+
+  /**
+   * Búsqueda parcial insensible a mayúsculas <b>y a acentos</b> (BSRCH-02): se aplica {@code
+   * f_unaccent(lower(...))} a ambos lados, de modo que {@code galon} encuentra {@code Galón}.
+   */
+  private static Predicate accentInsensitiveContains(
+      CriteriaBuilder cb, Path<String> path, String term) {
+    Expression<String> field = cb.function("f_unaccent", String.class, cb.lower(path));
+    Expression<String> pattern =
+        cb.function("f_unaccent", String.class, cb.literal(containsPattern(term)));
+    return cb.like(field, pattern, LIKE_ESCAPE);
   }
 
   /** Patrón {@code %valor%} en minúsculas, con los comodines de LIKE del input escapados. */
