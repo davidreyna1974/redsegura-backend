@@ -8,7 +8,7 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 
 ## [No publicado]
 
-### `asset-inventory-service` — Añadido (implementación, 57 tests, cobertura ≥ 70 %)
+### `asset-inventory-service` — Añadido (implementación, **98 tests, QA R1.1 certificado**, cobertura ≥ 70 %)
 - **Scaffolding contract-first** (ADR-05): openapi-generator produce las interfaces de API
   (`DevicesApi`/`BulkApi`/`HealthApi`) y los DTOs; los controladores **implementan** la interfaz
   → el código cumple el contrato por construcción.
@@ -25,6 +25,15 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 - **Importación masiva asíncrona** (RF-04): `POST /devices/bulk` (202 + job) y
   `GET /devices/bulk/jobs/{jobId}`; worker `@Async` aislado por ítem con resultado por dispositivo.
 - **Health probes** liveness/readiness (readiness verifica PostgreSQL, ADR-10).
+- **Direccionamiento de gestión dual-stack IPv4/IPv6** (RF-05a/ADR-13, Flyway V5): `managementIpv4`
+  y/o `managementIpv6` (dirección + prefijo CIDR + gateway, estilo NetBox); canonicalización IPv6
+  (RFC 5952) para unicidad real; validación por familia (422); redacción por familia; búsqueda por
+  ambas familias.
+- **Búsqueda insensible a acentos** (`unaccent`, Flyway V6) además de mayúsculas.
+- **Conformidad de contrato de eventos:** JSON Schema compartido (`contracts/events/asset-event.schema.json`)
+  verificado por `AssetEventContractIT` (happy/edge/sad); sobre de evento `version` 1.1.0.
+- **Pruebas de aceptación BDD** (Cucumber, Gherkin en español) como base de la **UAT**.
+- **Certificación QA de 4 fases** (R1 + re-certificación R1.1); reporte consolidado en `management`.
 
 ### Transversal (POM padre / infraestructura) — Añadido
 - **Observabilidad de 3 pilares** heredada por todos los servicios Java (RNF-15/16/17):
@@ -43,7 +52,9 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
   `gateway` (estilo NetBox `primary_ip4`/`primary_ip6`). Al menos una obligatoria; IPv6 canonicalizada
   (RFC 5952, Guava) para unicidad real; validación por familia server-side (422 `ADDRESS_INVALID`);
   redacción por rol de ambas familias; filtro de búsqueda por IPv4 o IPv6; payload de eventos `asset.*`
-  dual-stack (evento `version` 1.1.0). Migración V5; 65 tests en verde.
+  dual-stack (evento `version` 1.1.0). Migración V5.
+- **`asset-inventory` — `size` de página fuera de rango:** de **500** (fuga, `ConstraintViolationException`
+  sin manejar) a **422** `problem+json`; contrato alineado (`size` máx 100). Hallado en la QA.
 
 ### Añadido (fundación)
 - Inicialización del monorepo backend con `CLAUDE.md`, `.gitignore` poliglota y git-hook
