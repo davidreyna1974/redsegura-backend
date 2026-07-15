@@ -7,7 +7,39 @@ versionado **por microservicio** según [SemVer](https://semver.org/lang/es/) (t
 por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 
 ## [No publicado]
-### Añadido
+
+### `asset-inventory-service` — Añadido (implementación, 57 tests, cobertura ≥ 70 %)
+- **Scaffolding contract-first** (ADR-05): openapi-generator produce las interfaces de API
+  (`DevicesApi`/`BulkApi`/`HealthApi`) y los DTOs; los controladores **implementan** la interfaz
+  → el código cumple el contrato por construcción.
+- **CRUD de dispositivos** + búsqueda/filtros (hostname/vendor/model parciales insensibles a
+  mayúsculas; site/rack/tipo/criticidad/estado), paginación con tope y `sort` con whitelist.
+- **Persistencia:** JPA + Flyway (V1 devices, V2 idempotencia, V3 outbox, V4 jobs); auditoría
+  `created/updated_by/at` (ADR-07); unicidad por índice; baja lógica (RN6).
+- **Seguridad:** OAuth2 Resource Server (JWT Keycloak), RBAC por endpoint validado en el servicio;
+  `ETag`/`If-Match` → bloqueo optimista (ADR-09); idempotencia acotada por usuario + hash de cuerpo
+  (RN9); redacción de `mgmtIp` por rol server-side (ADR-11); 401/403 en `problem+json`; log de
+  auditoría de seguridad (OWASP A09). Errores RFC 7807 (ADR-08).
+- **Eventos `asset.created/updated/decommissioned`** vía **transactional outbox** a RabbitMQ
+  (RN11/ADR-04): escritura en la misma transacción + relay at-least-once con mensajes persistentes.
+- **Importación masiva asíncrona** (RF-04): `POST /devices/bulk` (202 + job) y
+  `GET /devices/bulk/jobs/{jobId}`; worker `@Async` aislado por ítem con resultado por dispositivo.
+- **Health probes** liveness/readiness (readiness verifica PostgreSQL, ADR-10).
+
+### Transversal (POM padre / infraestructura) — Añadido
+- **Observabilidad de 3 pilares** heredada por todos los servicios Java (RNF-15/16/17):
+  `micrometer-registry-prometheus` (métricas), `micrometer-tracing-bridge-otel` (traceId/spanId) y
+  `logstash-logback-encoder` + `logback-spring.xml` (logs JSON).
+- **Build reproducible en JDK 21** con `maven-toolchains-plugin` (`toolchains.sample.xml`).
+- **CI de `asset-inventory-service` activo** (push/PR con filtro por rutas, `mvn verify` único) y
+  **status check requerido** en `main`; actions en `@v5`.
+
+### Cambiado
+- **Gate de calidad ligado a `verify`:** `spotless:check` + `checkstyle:check` se ejecutan en la
+  fase `verify` del POM padre → `mvn verify` es el gatekeeper único e insaltable (antes el lint
+  vivía solo en `pluginManagement` y podía saltarse).
+
+### Añadido (fundación)
 - Inicialización del monorepo backend con `CLAUDE.md`, `.gitignore` poliglota y git-hook
   `pre-commit` (bloquea commits directos a `main`/`develop`).
 - **POM padre** (`pom.xml`): Java 21, Spring Boot 3.3.5, `pluginManagement` de calidad

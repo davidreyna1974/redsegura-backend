@@ -4,7 +4,8 @@
 > Memoria de "qué se hizo y por qué". Referencias: [`propuesta_modulo.md`](propuesta_modulo.md),
 > [`casos_de_prueba.md`](casos_de_prueba.md), [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** en desarrollo (pre-código) · **Última actualización:** 2026-07-13
+**Estado:** implementado (57 tests, cobertura ≥ 70 %, CI activo); pendiente certificación QA de 4
+fases · **Última actualización:** 2026-07-14
 
 ## 1. Contexto y justificación
 `asset-inventory-service` mantiene el **inventario único de activos de red** — la **fuente de
