@@ -6,7 +6,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.redsegura.assetinventory.AbstractIntegrationTest;
+import com.redsegura.assetinventory.repository.DeviceRepository;
+import com.redsegura.assetinventory.repository.OutboxRepository;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +34,16 @@ class ObservabilityIT extends AbstractIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private PrometheusMeterRegistry prometheusMeterRegistry;
+  @Autowired private DeviceRepository deviceRepository;
+  @Autowired private OutboxRepository outboxRepository;
+
+  // Aísla el test: la BD (contenedor singleton) se comparte entre clases y otras suites dejan
+  // datos.
+  @BeforeEach
+  void clean() {
+    outboxRepository.deleteAll();
+    deviceRepository.deleteAll();
+  }
 
   /**
    * OBS-01: el registro Prometheus está cableado y produce métricas en formato de scrape (RNF-15).
