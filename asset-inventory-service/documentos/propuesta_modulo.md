@@ -181,14 +181,35 @@ Enums: Criticality {ALTA,MEDIA,BAJA} · DeviceStatus {ACTIVO,BAJA} · DeviceType
 (Idempotency-Key + ETag/If-Match), **ADR-10** (probes), **ADR-11** (redacción por rol + log de
 seguridad) y **ADR-12** (gobernanza con Spectral) — ahora globales y aplicables a los 10 servicios.
 
+## 8b. Revisión de aplicabilidad de RNF (production readiness)
+
+> Añadida retroactivamente (2026-07-15) como referencia del nuevo paso obligatorio. Recorrido de los
+> RNF (`proyecto_microservicios_redsegura.md §8`) para este servicio; el detalle con evidencia vive en
+> [`matriz_rnf.md`](matriz_rnf.md) y los diferidos en
+> [`preparacion_produccion.md`](../../../management/documentos/arquitectura/preparacion_produccion.md).
+
+| Bloque de RNF | Aplica en DEV | N/A (justificado) | Diferido (disparador) |
+|---|---|---|---|
+| Seguridad | RNF-03/04/06(env)/09/**29** | RNF-07 (scan-orchestrator) | RNF-05 (DEPLOY); secretos-gestor (DEPLOY) |
+| Cadena de suministro | **RNF-08** (SCA + imagen) | — | — |
+| Resiliencia/eventos | RNF-12, **RNF-30** | — | RNF-10/11 (INT-SYNC) |
+| Observabilidad | RNF-15/16/17 | — | export por entorno (DEPLOY) |
+| Calidad/CI/docs · API | RNF-18/19/20/28, **RNF-27** | — | RNF-21 Pact (INT-CONS) |
+| Escalabilidad/despliegue · Rendimiento | RNF-14 (db-per-service) | RNF-24 (infra), 25/26 (frontend) | RNF-13/22/23 (DEPLOY); RNF-01 (PRE-REL) |
+
+- [x] **Matriz de RNF creada** ([`matriz_rnf.md`](matriz_rnf.md)).
+- [x] Diferidos registrados en `preparacion_produccion.md` con su disparador.
+- **En curso este ciclo (DEV):** RNF-08, RNF-27, RNF-29, RNF-30 (endurecimiento).
+
 ## 9. Checklist de apertura (antes de codificar)
 
 ```
 [x] Propuesta creada (este documento).
-[ ] casos_de_prueba.md creado desde el TEMPLATE (categorías: SEC, RBAC, CRUD, VAL, FLOW, RN, ERR, CYBER).
-[ ] memoria_tecnica.md del módulo iniciada.
+[x] casos_de_prueba.md creado desde el TEMPLATE (categorías: SEC, RBAC, CRUD, VAL, FLOW, RN, ERR, CYBER).
+[x] memoria_tecnica.md del módulo iniciada.
 [x] Contrato propio verificado (openapi.yaml, redocly 0 errores).
 [x] Contratos salientes (eventos) verificados contra comunicacion_por_eventos.md §4.1.
 [x] Revisión contra estándares de industria (Sección 8) completada.
+[x] Revisión de aplicabilidad de RNF (Sección 8b) + matriz_rnf.md creada.
 [x] Gate de seguridad previsto para todos los endpoints (escritura solo ADM; probar Auditor→403).
 ```
