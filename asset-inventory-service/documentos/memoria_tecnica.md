@@ -4,8 +4,15 @@
 > Memoria de "qué se hizo y por qué". Referencias: [`propuesta_modulo.md`](propuesta_modulo.md),
 > [`casos_de_prueba.md`](casos_de_prueba.md), [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 100 tests, cobertura ≥ 70 %, CI
+**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 105 tests, cobertura ≥ 70 %, CI
 activo · **Última actualización:** 2026-07-15
+
+> **Endurecimiento a producción (2026-07-15) — RNF-08/27/29/30, ADR-14..17:** se cerraron los cuatro
+> RNF de etapa DEV que faltaban: validación de JWT en profundidad (issuer+audience), entrega
+> garantizada de eventos (publisher confirms + relay `SKIP LOCKED`), gate de cadena de suministro en
+> CI (Trivy deps+imagen) y OpenAPI navegable en runtime (springdoc). Trazabilidad en
+> [`matriz_rnf.md`](matriz_rnf.md); los RNF diferidos (k8s/secretos/carga/Resilience4j/Pact) son
+> obligatorios en su etapa según [`preparacion_produccion.md`](../../../management/documentos/arquitectura/preparacion_produccion.md).
 
 > **Verificación en vivo de endpoints (2026-07-15):** los 10 endpoints probados por HTTP real
 > (curl/Postman) contra el entorno Docker Compose → 10/10 ✅. La pasada detectó y corrigió

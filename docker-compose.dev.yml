@@ -51,6 +51,9 @@ services:
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: "5672"
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/redsegura/protocol/openid-connect/certs
+      # issuer = URL que aparece en el claim `iss` del token (la que usan los clientes: localhost)
+      KEYCLOAK_ISSUER: http://localhost:8080/realms/redsegura
+      KEYCLOAK_AUDIENCE: redsegura-backend
     ports: ["8081:8081"]
     depends_on:
       postgres: { condition: service_healthy }

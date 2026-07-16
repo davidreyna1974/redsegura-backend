@@ -58,6 +58,13 @@
             <artifactId>guava</artifactId>
             <version>33.3.1-jre</version>
         </dependency>
+        <!-- OpenAPI navegable en runtime (RNF-27/ADR-17): Swagger UI + /v3/api-docs. Sirve el
+             contrato openapi.yaml (fuente de verdad contract-first) copiado a /static. -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.6.0</version>
+        </dependency>
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
@@ -163,6 +170,22 @@
                             <target>
                                 <copy file="${project.basedir}/openapi.yaml"
                                       tofile="${openapi.local.spec}" overwrite="true"/>
+                            </target>
+                        </configuration>
+                    </execution>
+                    <!-- Publica el contrato como recurso estatico (/openapi.yaml) para que Swagger UI
+                         lo sirva en runtime (RNF-27). En process-classes: disponible ya en los tests. -->
+                    <execution>
+                        <id>copy-openapi-spec-to-static</id>
+                        <phase>process-classes</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <copy file="${project.basedir}/openapi.yaml"
+                                      tofile="${project.build.outputDirectory}/static/openapi.yaml"
+                                      overwrite="true"/>
                             </target>
                         </configuration>
                     </execution>

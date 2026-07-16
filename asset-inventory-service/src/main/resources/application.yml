@@ -20,11 +20,14 @@ spring:
     enabled: true
 
   # Message broker (RabbitMQ) para publicar eventos asset.* vía outbox (RN11).
+  # publisher-confirm-type=correlated (RNF-30/ADR-15): el relay espera el ACK del broker antes de
+  # marcar un evento como publicado; sin confirm, la transacción revierte y el evento se reintenta.
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
     username: ${RABBITMQ_USER:guest}
     password: ${RABBITMQ_PASSWORD:guest}
+    publisher-confirm-type: correlated
 
   # OAuth2 Resource Server (RNF-03): valida el JWT de Keycloak. El decoder es perezoso (no
   # descarga los JWKs al arrancar), por eso no requiere Keycloak vivo en los tests.
@@ -37,8 +40,21 @@ spring:
 server:
   port: 8081
 
-# Transactional outbox (RN11/ADR-04): el relay publica los eventos pendientes periódicamente.
+# OpenAPI navegable en runtime (RNF-27/ADR-17). Swagger UI carga el contrato openapi.yaml (fuente de
+# verdad contract-first) servido como recurso estatico en /openapi.yaml. Doc sin autenticacion.
+springdoc:
+  swagger-ui:
+    url: /openapi.yaml
+    path: /swagger-ui.html
+
+# Validación de JWT en profundidad (RNF-29/ADR-14): además de firma y expiración, el decoder valida
+# el issuer (emisor) y la audience (aud/azp) esperados. issuer = URL del realm tal como aparece en el
+# claim `iss` del token (la que usa el cliente para pedirlo); audience = identificador del backend
+# (mapper de audiencia en Keycloak). Un token de otro realm/audiencia → 401.
 redsegura:
+  security:
+    issuer: ${KEYCLOAK_ISSUER:http://localhost:8080/realms/redsegura}
+    audience: ${KEYCLOAK_AUDIENCE:redsegura-backend}
   outbox:
     relay:
       enabled: ${OUTBOX_RELAY_ENABLED:true}

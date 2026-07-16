@@ -11,14 +11,17 @@ import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageDeliveryMode;
 import org.springframework.amqp.core.MessageProperties;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Relay del transactional outbox (RN11/ADR-04): lee los eventos pendientes y los publica al {@code
- * topic exchange} común, marcándolos como publicados. Semántica <b>at-least-once</b> (si la
- * publicación falla, el evento sigue pendiente y se reintenta; los consumidores deduplican por
- * {@code eventId}, RNF-E1). Los mensajes son persistentes (RNF-E2).
+ * Relay del transactional outbox (RN11/ADR-04, endurecido RNF-30/ADR-15): toma un lote de eventos
+ * pendientes con {@code FOR UPDATE SKIP LOCKED} (seguro con varias réplicas), los publica al {@code
+ * topic exchange} común y los marca como publicados <b>solo tras el ACK del broker</b> (publisher
+ * confirms). Semántica <b>at-least-once</b>: si el broker no confirma, la transacción revierte y el
+ * lote sigue pendiente para el siguiente tick; los consumidores deduplican por {@code eventId}. Los
+ * mensajes son persistentes.
  */
 @Component
 public class OutboxRelay {
@@ -27,26 +30,39 @@ public class OutboxRelay {
 
   private final OutboxRepository outboxRepository;
   private final RabbitTemplate rabbitTemplate;
+  private final long confirmTimeoutMs;
 
-  public OutboxRelay(OutboxRepository outboxRepository, RabbitTemplate rabbitTemplate) {
+  public OutboxRelay(
+      OutboxRepository outboxRepository,
+      RabbitTemplate rabbitTemplate,
+      @Value("${redsegura.outbox.relay.confirm-timeout-ms:5000}") long confirmTimeoutMs) {
     this.outboxRepository = outboxRepository;
     this.rabbitTemplate = rabbitTemplate;
+    this.confirmTimeoutMs = confirmTimeoutMs;
   }
 
   /**
    * Publica el lote de eventos pendientes y los marca como publicados. Devuelve cuántos publicó.
-   * Corre en transacción: si una publicación falla, se revierte el marcado del lote y se reintenta.
+   * Corre en transacción: publica el lote y espera los <b>publisher confirms</b>; si el broker no
+   * confirma (nack o timeout), lanza y la transacción revierte → el lote sigue pendiente y se
+   * reintenta. Solo se marca publicado lo que el broker aceptó.
    */
   @Transactional
   public int publishPending() {
-    List<OutboxEvent> pending = outboxRepository.findTop100ByPublishedAtIsNullOrderByCreatedAtAsc();
-    for (OutboxEvent event : pending) {
-      rabbitTemplate.send(RabbitConfig.EXCHANGE, event.getEventType(), toMessage(event));
-      event.markPublished();
+    List<OutboxEvent> pending = outboxRepository.lockPendingBatch();
+    if (pending.isEmpty()) {
+      return 0;
     }
-    if (!pending.isEmpty()) {
-      LOG.info("event=outbox_published count={}", pending.size());
-    }
+    rabbitTemplate.invoke(
+        operations -> {
+          for (OutboxEvent event : pending) {
+            operations.send(RabbitConfig.EXCHANGE, event.getEventType(), toMessage(event));
+          }
+          operations.waitForConfirmsOrDie(confirmTimeoutMs);
+          return null;
+        });
+    pending.forEach(OutboxEvent::markPublished);
+    LOG.info("event=outbox_published count={}", pending.size());
     return pending.size();
   }
 
