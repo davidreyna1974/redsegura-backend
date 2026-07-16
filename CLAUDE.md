@@ -144,15 +144,25 @@ agrupa las entradas por servicio.
 
 ## 📄 Documentación obligatoria por microservicio
 
-Todo microservicio nuevo requiere, **antes de implementar**, en su propia carpeta:
+Cada microservicio es **dueño de su documentación y artefactos de prueba**. Estructura por servicio:
 ```
-codigo/backend/<servicio>/docs/
-├── propuesta_modulo.md      ← planificación previa al código
-├── casos_de_prueba.md       ← casos definidos ANTES de codificar
-└── memoria_tecnica.md       ← documento vivo, actualizado por fase
+codigo/backend/<servicio>/
+├── openapi.yaml                        ← contrato de API (fuente de verdad)
+├── Dockerfile
+├── documentos/
+│   ├── propuesta_modulo.md             ← planificación previa al código
+│   ├── casos_de_prueba.md              ← casos definidos ANTES de codificar
+│   ├── memoria_tecnica.md              ← documento vivo, actualizado por fase
+│   └── verificacion_endpoints.md       ← reporte de la verificación en vivo (10/10 endpoints)
+└── postman/
+    ├── <servicio>.postman_collection.json   ← colección con ejemplos + respuestas esperadas
+    └── GUIA_PRUEBAS_POSTMAN.md              ← guía paso a paso para probar el servicio
 ```
-Taxonomía completa de documentación del sistema (qué va global vs. por
-repo vs. por servicio): `proyecto_microservicios_redsegura.md` §9.
+**Infra de desarrollo compartida** (no por servicio): `docker-compose.dev.yml` (raíz) +
+`deploy/` (realm de Keycloak sembrado + README del entorno). Contratos de eventos **compartidos**:
+`contracts/events/`. Documentación **del proyecto** (arquitectura, QA consolidado, UAT del cliente):
+repo `management`. Taxonomía completa (qué va global vs. por repo vs. por servicio):
+`../management/documentos/proyecto_microservicios_redsegura.md` §9.
 
 ---
 
@@ -181,8 +191,8 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
 [ ] 3. Si el servicio expone o consume un contrato (API/evento), verificado con Pact.
 [ ] 4. Documentación del microservicio (propuesta + casos + memoria técnica) actualizada.
 [ ] 5. Verificación EN VIVO de TODOS los endpoints (curl/Postman sobre docker-compose.dev.yml,
-       con JWT reales de Keycloak) → reporte qa/verificacion_endpoints_<servicio>.md + colección
-       Postman en deploy/postman/. Complementa (no sustituye) los tests automatizados; cubre
+       con JWT reales de Keycloak) → reporte <servicio>/documentos/verificacion_endpoints.md +
+       colección Postman en <servicio>/postman/. Complementa (no sustituye) los tests automatizados; cubre
        despliegue/config/semántica HTTP (PUT=reemplazo completo vs PATCH=merge). Ver
        ../management/documentos/qa/estrategia_de_pruebas.md §1b.
 ```
@@ -309,7 +319,7 @@ outbox** a RabbitMQ (RN11/ADR-04); importación masiva asíncrona (RF-04). El ga
 (build + tests Testcontainers + cobertura + lint, todo ligado a la fase `verify`); el CI corre en
 push/PR y es **status check requerido** en `main`. **Verificación en vivo de los 10 endpoints** (curl/Postman
 sobre el entorno Docker Compose): 10/10 ✅ —
-`../management/documentos/qa/verificacion_endpoints_asset-inventory.md`; esa pasada detectó y corrigió
+`asset-inventory-service/documentos/verificacion_endpoints.md`; esa pasada detectó y corrigió
 `HALLAZGO-LIVE-01` (PUT no cumplía reemplazo completo RFC 9110 — campos omitidos no se nulificaban;
 +2 tests de regresión).
 

@@ -1,6 +1,8 @@
-# Entorno de desarrollo local — asset-inventory-service
+# Entorno de desarrollo local (infra compartida) — redSegura backend
 
-Levanta el servicio con sus dependencias reales para **probarlo vía Postman/curl**.
+Levanta los servicios con sus **dependencias reales compartidas** (PostgreSQL + RabbitMQ +
+**Keycloak** sembrado) para **probarlos vía Postman/curl**. Es la infra común del backend; la
+**colección Postman de cada servicio** vive con el servicio (`<servicio>/postman/`).
 **No es producción** (contraseñas triviales, Keycloak en `start-dev`).
 
 ## Requisitos
@@ -22,13 +24,17 @@ Servicios expuestos:
 El servicio arranca cuando Postgres, RabbitMQ y **Keycloak (realm `redsegura` importado)** están sanos.
 
 ## Probar con Postman
-> **Guía paso a paso completa:** [`postman/GUIA_PRUEBAS_POSTMAN.md`](postman/GUIA_PRUEBAS_POSTMAN.md)
-> (orden de ejecución, respuestas esperadas, casos RBAC/redacción, Collection Runner y troubleshooting).
+La **colección Postman de cada servicio vive con el servicio** (en `<servicio>/postman/`), junto a su
+guía paso a paso. Este entorno (Postgres + RabbitMQ + Keycloak) es la infra **compartida** que
+levantan todas ellas.
 
-Resumen:
-1. Importa `deploy/postman/redsegura-asset-inventory.postman_collection.json`.
+- `asset-inventory-service` → [`../asset-inventory-service/postman/GUIA_PRUEBAS_POSTMAN.md`](../asset-inventory-service/postman/GUIA_PRUEBAS_POSTMAN.md)
+  (+ colección `redsegura-asset-inventory.postman_collection.json`).
+
+Resumen del flujo:
+1. Importa la colección del servicio (`<servicio>/postman/*.postman_collection.json`).
 2. Ejecuta **Auth › Token (Administrador)** → guarda el JWT en `{{access_token}}`.
-3. Ejecuta los requests de **Dispositivos** (guardan `deviceId`/`etag`/`jobId` solos).
+3. Ejecuta los requests (guardan `deviceId`/`etag`/`jobId` solos).
    - Para ver la **redacción de IP**, obtén el **Token (Auditor)** y repite *Consultar dispositivo*.
 
 ## Usuarios de prueba (realm `redsegura`)

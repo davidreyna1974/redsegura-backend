@@ -14,7 +14,7 @@ activo · **Última actualización:** 2026-07-15
 > dispositivo dual-stack a solo-IPv6. Corregido con un flag `fullReplace` en `applyUpdate`
 > (mantiene la invariante RF-05a: al menos una dirección → 422 si no) + 2 tests de regresión
 > (`CRUD-04b`/`CRUD-04c`). Blast radius **local**, contrato sin cambios. Detalle:
-> [`../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md`](../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md).
+> [`verificacion_endpoints.md`](verificacion_endpoints.md).
 
 ## 1. Contexto y justificación
 `asset-inventory-service` mantiene el **inventario único de activos de red** — la **fuente de

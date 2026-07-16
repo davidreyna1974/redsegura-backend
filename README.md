@@ -32,9 +32,10 @@ vive en el repositorio umbrella `management`:
 > outbox + importación masiva; 57 tests, cobertura ≥ 70 %, **CI activo y gateando `main`**). Resto de
 > servicios de Fase A sin iniciar. Contratos OpenAPI de Fase A definidos.
 
-> **Probar un servicio localmente (vía Postman/curl):** entorno de desarrollo con Docker Compose
-> (PostgreSQL + RabbitMQ + **Keycloak** sembrado + el servicio) y colección de Postman — ver
-> [`deploy/README.md`](deploy/README.md). `docker compose -f docker-compose.dev.yml up --build`.
+> **Probar un servicio localmente (vía Postman/curl):** infra de desarrollo compartida con Docker
+> Compose (PostgreSQL + RabbitMQ + **Keycloak** sembrado) — ver [`deploy/README.md`](deploy/README.md)
+> (`docker compose -f docker-compose.dev.yml up --build`). La **colección Postman y su guía viven con
+> cada servicio** en `<servicio>/postman/` (p. ej. [`asset-inventory-service/postman/`](asset-inventory-service/postman/GUIA_PRUEBAS_POSTMAN.md)).
 
 ## 🛠️ Stack
 

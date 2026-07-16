@@ -77,7 +77,7 @@ curl -s http://localhost:8081/api/v1/health/readiness   # -> {"status":"UP"}
 ## 4. Importar la colección en Postman
 
 1. Postman → **Import** → arrastra
-   `deploy/postman/redsegura-asset-inventory.postman_collection.json`.
+   `asset-inventory-service/postman/redsegura-asset-inventory.postman_collection.json`.
 2. **No hace falta crear un Environment.** La colección ya trae sus variables apuntando a
    `localhost`:
 
@@ -239,9 +239,10 @@ docker compose -f docker-compose.dev.yml down -v     # borra los datos (BD limpi
 
 ## Referencias
 
-- Entorno de desarrollo: [`../README.md`](../README.md)
+- Entorno de desarrollo (infra compartida): [`../../deploy/README.md`](../../deploy/README.md)
 - Colección: [`redsegura-asset-inventory.postman_collection.json`](redsegura-asset-inventory.postman_collection.json)
-- Realm sembrado: [`../keycloak/redsegura-realm.json`](../keycloak/redsegura-realm.json)
-- Contrato de la API: [`../../asset-inventory-service/openapi.yaml`](../../asset-inventory-service/openapi.yaml)
-- Casos de prueba del módulo:
-  [`../../asset-inventory-service/documentos/casos_de_prueba.md`](../../asset-inventory-service/documentos/casos_de_prueba.md)
+- Realm sembrado (compartido): [`../../deploy/keycloak/redsegura-realm.json`](../../deploy/keycloak/redsegura-realm.json)
+- Contrato de la API: [`../openapi.yaml`](../openapi.yaml)
+- Casos de prueba del módulo: [`../documentos/casos_de_prueba.md`](../documentos/casos_de_prueba.md)
+- Verificación en vivo de endpoints: [`../documentos/verificacion_endpoints.md`](../documentos/verificacion_endpoints.md)
+- Guion de UAT (cliente): [`../../../management/documentos/uat/asset-inventory-service/guion_uat.md`](../../../management/documentos/uat/asset-inventory-service/guion_uat.md)

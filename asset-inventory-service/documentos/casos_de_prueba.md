@@ -9,7 +9,7 @@ CERTIFICADA** · **Fecha:** 2026-07-12 · **Versión de código:** `develop`; 10
 verde (98 de la R1.1 + 2 de regresión `CRUD-04b`/`CRUD-04c` tras la verificación en vivo de endpoints,
 `HALLAZGO-LIVE-01`). Reporte consolidado:
 [`../../../management/documentos/qa/reporte_qa.md`](../../../management/documentos/qa/reporte_qa.md) ·
-verificación en vivo: [`../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md`](../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md).
+verificación en vivo: [`verificacion_endpoints.md`](verificacion_endpoints.md).
 
 **Estados:** `✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `⚠️ ABIERTO` · `N/A`.
 **Roles:** ADM=Administrador · OPE=Operador · AUD=Auditor.
@@ -174,6 +174,6 @@ Validación del payload `asset.*` contra su JSON Schema (`contracts/asset-event.
 - **Verificación en vivo de endpoints (2026-07-15):** los 10 endpoints por HTTP real
   (curl/Postman) contra el entorno Docker Compose → 10/10 ✅. Detectó `HALLAZGO-LIVE-01` (PUT no
   cumplía reemplazo completo RFC 9110), corregido + regresión. Detalle:
-  [`../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md`](../../../management/documentos/qa/verificacion_endpoints_asset-inventory.md).
+  [`verificacion_endpoints.md`](verificacion_endpoints.md).
 - Cobertura de categorías: SEC, RBAC, CRUD, VAL, BSRCH, EMPTY, FLOW, RN, ERR, CYBER — completa
   (UI/VIS pertenecen al frontend).
