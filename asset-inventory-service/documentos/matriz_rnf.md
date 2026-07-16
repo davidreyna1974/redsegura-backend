@@ -19,7 +19,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia.
 | RNF-05 TLS + segmentación interna | 🔵 | — | — | **DEPLOY** (gateway/infra) |
 | RNF-06 secretos externalizados | 🟢/🔵 | Todo por variable de entorno (DB, JWKS, RabbitMQ) | `application.yml`, `docker-compose.dev.yml` | Gestor de secretos en **DEPLOY** |
 | RNF-07 alcance de escaneo | ⬜ | — | — | Es de `scan-orchestrator-service` |
-| RNF-08 SCA + escaneo de imagen (CI) | 🟡 | dependency-check + Trivy bloqueantes | (este ciclo) `.github/workflows/…` | **DEV** — en curso |
+| RNF-08 SCA + escaneo de imagen (CI) | ✅ | Trivy `fs` (deps) + Trivy `image`, bloqueantes en crítico | `.github/workflows/ci-asset-inventory-service.yml` | — |
 | RNF-09 sin fuga de internos | ✅ | Manejo centralizado RFC 7807; sin stack traces | `GlobalExceptionHandler` | — |
 | RNF-10 Resilience4j (timeouts/retry/CB) | ⬜→🔵 | No hace llamadas síncronas salientes hoy | — | **INT-SYNC** (obligatorio al introducir una) |
 | RNF-11 degradación con gracia | ⬜→🔵 | Sin dependencia síncrona externa hoy | — | **INT-SYNC** |
@@ -37,19 +37,20 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia.
 | RNF-23 IaC (Terraform) | 🔵 | — | — | **DEPLOY** (infra) |
 | RNF-24 presupuesto AWS | ⬜ | — | — | Nivel proyecto/infra |
 | RNF-25/26 accesibilidad/UX dashboard | ⬜ | — | — | Repo `frontend` |
-| RNF-27 OpenAPI + **Swagger UI runtime** | 🟡 | Contrato `openapi.yaml` ✅; falta servirlo (springdoc) | `openapi.yaml`; (este ciclo) springdoc | **DEV** — en curso |
+| RNF-27 OpenAPI + **Swagger UI runtime** | ✅ | springdoc sirve Swagger UI + `/v3/api-docs`; `/openapi.yaml` estático | `pom.xml` (springdoc), `application.yml`, `ApiDocsIT` | — |
 | RNF-28 SemVer + CHANGELOG | ✅ | Tags por servicio; CHANGELOG Keep a Changelog | `CHANGELOG.md` | — |
-| RNF-29 token issuer/audience | 🟡 | JwtDecoder valida iss+aud+exp | (este ciclo) `SecurityConfig` | **DEV** — en curso |
-| RNF-30 entrega garantizada de eventos | 🟡 | Outbox ✅; faltan publisher confirms + relay SKIP LOCKED | `OutboxWriter/Relay*` (endurecer) | **DEV** — en curso |
+| RNF-29 token issuer/audience | ✅ | JwtDecoder valida firma+iss+aud+exp | `SecurityConfig`, `AudienceValidator`, `AudienceValidatorTest` | — |
+| RNF-30 entrega garantizada de eventos | ✅ | Outbox + publisher confirms + relay `SKIP LOCKED` + DLQ (consumidor) | `OutboxRelay`, `OutboxRepository`, `OutboxRelayIT` | — |
 | RNF-31 readiness (esta matriz) | ✅ | Matriz + checklist mantenidas | este archivo + `preparacion_produccion.md` | — |
 
 ## Resumen
 
-- **Etapa DEV — cerrados:** RNF-03/04/09/12/14/15/17/18/19/20/28 (+03 base). ✅
-- **Etapa DEV — en curso este ciclo:** RNF-08, RNF-27, RNF-29, RNF-30. 🟡
+- **Etapa DEV — cerrados:** RNF-03/04/**08**/09/12/14/15/17/18/19/20/**27**/28/**29**/**30**. ✅
+  (los 4 de endurecimiento —RNF-08/27/29/30— cerrados en el ciclo 2026-07-15.)
 - **Diferidos con disparador (no opcionales):** RNF-01 (PRE-REL), RNF-05/13(HPA)/16(export)/22/23 y
   gestor de secretos (DEPLOY), RNF-10/11 (INT-SYNC), RNF-21 (INT-CONS). 🔵
 - **N/A justificado:** RNF-02/07 (otros servicios), RNF-24 (infra), RNF-25/26 (frontend). ⬜
 
-> **Estado del servicio:** funcionalmente certificado; **no "done" en el sentido DEV** hasta cerrar
-> los 4 🟡 de este ciclo. Los 🔵 son obligatorios en su etapa (rastreados en `preparacion_produccion.md`).
+> **Estado del servicio:** **todos los RNF de etapa DEV cerrados** ✅ → cumple la Definición de "done"
+> D6. Los 🔵 son obligatorios en su etapa (rastreados en `preparacion_produccion.md`); no bloquean el
+> "done" funcional, sí la salida a producción cuando llegue su etapa.

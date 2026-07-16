@@ -8,6 +8,19 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 
 ## [No publicado]
 
+### `asset-inventory-service` — Endurecimiento a producción (RNF-08/27/29/30 · ADR-14..17)
+- **JWT en profundidad (RNF-29/ADR-14):** el `JwtDecoder` valida ahora `issuer` + `audience` +
+  expiración además de la firma; un token de otro realm/audiencia → `401`. `AudienceValidator` +
+  mapper de audiencia (`redsegura-backend`) en el realm. Config `KEYCLOAK_ISSUER`/`KEYCLOAK_AUDIENCE`.
+- **Entrega garantizada de eventos (RNF-30/ADR-15):** el relay del outbox toma el lote con
+  `FOR UPDATE SKIP LOCKED` (seguro con múltiples réplicas) y marca publicado **solo tras el ACK**
+  del broker (publisher confirms `correlated`); si no confirma, revierte y reintenta.
+- **Cadena de suministro en CI (RNF-08/ADR-16):** Trivy `fs` (dependencias) + Trivy `image`
+  (imagen del contenedor), **bloqueantes en severidad crítica**, en el gate del servicio.
+- **OpenAPI navegable en runtime (RNF-27/ADR-17):** springdoc sirve **Swagger UI** + `/v3/api-docs`;
+  el `openapi.yaml` (fuente de verdad) se publica como recurso estático en `/openapi.yaml`.
+- Trazado por servicio en `documentos/matriz_rnf.md`; diferidos en `preparacion_produccion.md`.
+
 ### `asset-inventory-service` — Corregido
 - **`PUT /devices/{id}` ahora es reemplazo completo (RFC 9110)** — `HALLAZGO-LIVE-01`. Antes delegaba
   en la ruta de merge de PATCH y no nulificaba los campos omitidos, impidiendo conmutar un dispositivo

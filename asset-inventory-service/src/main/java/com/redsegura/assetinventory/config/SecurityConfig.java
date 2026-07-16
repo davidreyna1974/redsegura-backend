@@ -1,10 +1,12 @@
 package com.redsegura.assetinventory.config;
 
+import com.redsegura.assetinventory.security.AudienceValidator;
 import com.redsegura.assetinventory.web.ProblemAccessDeniedHandler;
 import com.redsegura.assetinventory.web.ProblemAuthenticationEntryPoint;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -13,7 +15,12 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -40,7 +47,14 @@ public class SecurityConfig {
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers("/api/v1/health/**", "/actuator/**")
+                auth.requestMatchers(
+                        "/api/v1/health/**",
+                        "/actuator/**",
+                        // OpenAPI navegable en runtime (RNF-27): doc pública, sin token.
+                        "/openapi.yaml",
+                        "/swagger-ui.html",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**")
                     .permitAll()
                     // Lectura del inventario: los tres roles.
                     .requestMatchers(HttpMethod.GET, "/api/v1/devices/**")
@@ -62,6 +76,25 @@ public class SecurityConfig {
                     .accessDeniedHandler(accessDeniedHandler)
                     .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
     return http.build();
+  }
+
+  /**
+   * Decoder de JWT con validación en profundidad (RNF-29/ADR-14): firma (JWKS), expiración,
+   * <b>issuer</b> y <b>audience</b>. Se construye desde el {@code jwk-set-uri} (perezoso: no
+   * descarga los JWKs al arrancar, por eso no requiere Keycloak vivo en los tests), y se le añaden
+   * los validadores de emisor y audiencia esperados. Un token de otro realm/audiencia → 401.
+   */
+  @Bean
+  JwtDecoder jwtDecoder(
+      @Value("${spring.security.oauth2.resourceserver.jwt.jwk-set-uri}") String jwkSetUri,
+      @Value("${redsegura.security.issuer}") String issuer,
+      @Value("${redsegura.security.audience}") String audience) {
+    NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+    OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuer);
+    OAuth2TokenValidator<Jwt> validator =
+        new DelegatingOAuth2TokenValidator<>(withIssuer, new AudienceValidator(audience));
+    decoder.setJwtValidator(validator);
+    return decoder;
   }
 
   /** Extrae los roles de realm de Keycloak ({@code realm_access.roles}) como authorities. */

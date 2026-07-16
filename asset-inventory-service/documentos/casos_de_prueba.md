@@ -155,6 +155,20 @@ Validación del payload `asset.*` contra su JSON Schema (`contracts/asset-event.
 | EVT-02 | edge | solo-IPv6 y dual-stack | validan; familias opcionales presentes/ausentes según el caso | ✅ |
 | EVT-03 | sad | (1) operación fallida no emite evento; (2) payload malformado | (1) 0 eventos nuevos; (2) el schema **rechaza** (tiene dientes) | ✅ |
 
+## Endurecimiento a producción (RNF-08/27/29/30)
+
+Cierre de los RNF de etapa DEV (ver [`matriz_rnf.md`](matriz_rnf.md)).
+
+| ID | Cat. | Descripción | Resultado esperado | Estado |
+|---|---|---|---|---|
+| SEC-05 | SEC | Token con `aud`/`azp` de la audiencia esperada | aceptado (`AudienceValidatorTest`) | ✅ |
+| SEC-06 | SEC | Token dirigido a otra audiencia/servicio | rechazado (`invalid_token` → 401) | ✅ |
+| SEC-07 | SEC | (config) `issuer`/`audience` externalizados; token de otro realm → 401 | validado por `JwtDecoder` (iss+aud+exp) | ✅ |
+| EVT-04 | RN30 | Relay marca publicado **solo tras ACK** del broker (publisher confirms) | evento entregado y `publishedAt` set (`OutboxRelayIT`) | ✅ |
+| EVT-05 | RN30 | Lote tomado con `FOR UPDATE SKIP LOCKED` (seguro multi-réplica) | query nativa; lote correcto | ✅ |
+| APIDOC-01 | DOC | `/openapi.yaml` servido en runtime sin token | 200 + contrato (`ApiDocsIT`) | ✅ |
+| APIDOC-02 | DOC | `/v3/api-docs` (springdoc) disponible sin token | 200 (`ApiDocsIT`) | ✅ |
+
 ---
 
 ## Patrones que han causado bugs reales (revisar siempre)

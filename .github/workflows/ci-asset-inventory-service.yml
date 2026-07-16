@@ -48,3 +48,28 @@ jobs:
       # Todo está ligado a la fase `verify` en el POM padre.
       - name: Gatekeeper (build + tests + cobertura + lint)
         run: mvn -pl asset-inventory-service -am -B clean verify
+
+      # Cadena de suministro (RNF-08/ADR-16), bloqueante en severidad CRÍTICA:
+      # (a) SCA de dependencias (Trivy fs) — vulnerabilidades en las libs del proyecto.
+      - name: SCA de dependencias (Trivy fs)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: asset-inventory-service
+          scanners: vuln
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+      # (b) Escaneo de la imagen de contenedor (Trivy image): construir y escanear el artefacto real.
+      - name: Construir imagen del servicio
+        run: docker build -f asset-inventory-service/Dockerfile -t asset-inventory-service:ci .
+
+      - name: Escaneo de imagen de contenedor (Trivy image)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: asset-inventory-service:ci
+          severity: CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
