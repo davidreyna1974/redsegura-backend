@@ -184,7 +184,7 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
 [ ] La autorización se valida en el backend, no se asume que el API Gateway ya filtró todo.
 ```
 
-**D — Definición de "done" (no ofrecer continuar hasta cumplir las 5):**
+**D — Definición de "done" (no ofrecer continuar hasta cumplir las 6):**
 ```
 [ ] 1. Todos los casos de prueba en ✅ PASS.
 [ ] 2. Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70%.
@@ -195,6 +195,10 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
        colección Postman en <servicio>/postman/. Complementa (no sustituye) los tests automatizados; cubre
        despliegue/config/semántica HTTP (PUT=reemplazo completo vs PATCH=merge). Ver
        ../management/documentos/qa/estrategia_de_pruebas.md §1b.
+[ ] 6. RNF verificados: matriz_rnf.md sin ningún RNF de etapa DEV en 🟡 (todos ✅ o ⬜/🔵 con
+       disparador registrado en preparacion_produccion.md). Un RNF sin gate NO se da por cumplido:
+       donde exista (SCA/imagen, cobertura, contrato, Swagger) lo hace fallar el CI. "done funcional"
+       ≠ "production-ready" — este último exige además los ítems de la etapa correspondiente.
 ```
 
 > **E — Tipos de test obligatorios por microservicio** (además de A–D): la batería de pruebas de
