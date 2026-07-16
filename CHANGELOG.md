@@ -42,12 +42,13 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
   verificado por `AssetEventContractIT` (happy/edge/sad); sobre de evento `version` 1.1.0.
 - **Pruebas de aceptación BDD** (Cucumber, Gherkin en español) como base de la **UAT**.
 - **Certificación QA de 4 fases** (R1 + re-certificación R1.1); reporte consolidado en `management`.
-- **Entorno de desarrollo local** (`docker-compose.dev.yml`): PostgreSQL + RabbitMQ + **Keycloak
-  sembrado** (realm `redsegura`, usuarios ADM/OPE/AUD) + el servicio empaquetado, para probarlo vía
-  Postman/curl con JWT reales. **Colección Postman** (`deploy/postman/`) con ejemplos de request y
-  respuestas esperadas, y **guía paso a paso** (`GUIA_PRUEBAS_POSTMAN.md`).
+- **Entorno de desarrollo local** — infra compartida (`docker-compose.dev.yml` + `deploy/keycloak/`):
+  PostgreSQL + RabbitMQ + **Keycloak sembrado** (realm `redsegura`, usuarios ADM/OPE/AUD) + el servicio
+  empaquetado, para probarlo vía Postman/curl con JWT reales. **Colección Postman por servicio** en
+  `asset-inventory-service/postman/` con ejemplos de request y respuestas esperadas, y **guía paso a
+  paso** (`GUIA_PRUEBAS_POSTMAN.md`).
 - **Verificación en vivo de los 10 endpoints** sobre ese entorno (10/10 ✅); reporte en
-  `management/documentos/qa/verificacion_endpoints_asset-inventory.md`.
+  `asset-inventory-service/documentos/verificacion_endpoints.md`.
 
 ### Transversal (POM padre / infraestructura) — Añadido
 - **Observabilidad de 3 pilares** heredada por todos los servicios Java (RNF-15/16/17):
