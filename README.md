@@ -39,7 +39,7 @@ vive en el repositorio umbrella `management`:
 
 ## 🛠️ Stack
 
-- **Java 21 / Spring Boot 3.3.5** (servicios de lógica de negocio) — Maven, POM padre común.
+- **Java 21 / Spring Boot 3.5.16** (servicios de lógica de negocio) — Maven, POM padre común.
 - **Python 3.12 / FastAPI** (servicios de automatización de red y seguridad) — pip/uv.
 - Persistencia **PostgreSQL** (una BD por servicio); mensajería **RabbitMQ**; auth **Keycloak**.
 - Contratos **OpenAPI 3.1** por servicio (`<servicio>/openapi.yaml`).

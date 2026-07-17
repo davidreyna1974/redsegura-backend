@@ -19,7 +19,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia.
 | RNF-05 TLS + segmentación interna | 🔵 | — | — | **DEPLOY** (gateway/infra) |
 | RNF-06 secretos externalizados | 🟢/🔵 | Todo por variable de entorno (DB, JWKS, RabbitMQ) | `application.yml`, `docker-compose.dev.yml` | Gestor de secretos en **DEPLOY** |
 | RNF-07 alcance de escaneo | ⬜ | — | — | Es de `scan-orchestrator-service` |
-| RNF-08 SCA + escaneo de imagen (CI) | ✅ | Trivy `fs` (deps) + Trivy `image`, bloqueantes en crítico | `.github/workflows/ci-asset-inventory-service.yml` | — |
+| RNF-08 SCA + escaneo de imagen (CI) | ✅ | Trivy `image` (inspecciona jars/deps + capas SO), bloqueante en crítico. En su estreno detectó 5 CVE críticos → subida a Spring Boot 3.5.16 | `.github/workflows/ci-asset-inventory-service.yml` | — |
 | RNF-09 sin fuga de internos | ✅ | Manejo centralizado RFC 7807; sin stack traces | `GlobalExceptionHandler` | — |
 | RNF-10 Resilience4j (timeouts/retry/CB) | ⬜→🔵 | No hace llamadas síncronas salientes hoy | — | **INT-SYNC** (obligatorio al introducir una) |
 | RNF-11 degradación con gracia | ⬜→🔵 | Sin dependencia síncrona externa hoy | — | **INT-SYNC** |
