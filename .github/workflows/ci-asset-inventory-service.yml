@@ -56,13 +56,12 @@ jobs:
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
             | sh -s -- -b /usr/local/bin
 
-      # (a) SCA de dependencias — vulnerabilidades en las libs del proyecto.
-      - name: SCA de dependencias (Trivy fs)
-        run: trivy fs --scanners vuln --severity CRITICAL --exit-code 1 --ignore-unfixed asset-inventory-service
-
-      # (b) Escaneo de la imagen de contenedor: construir y escanear el artefacto real.
+      # Construir la imagen real del servicio (artefacto que se desplegaría).
       - name: Construir imagen del servicio
         run: docker build -f asset-inventory-service/Dockerfile -t asset-inventory-service:ci .
 
-      - name: Escaneo de imagen de contenedor (Trivy image)
-        run: trivy image --severity CRITICAL --exit-code 1 --ignore-unfixed asset-inventory-service:ci
+      # Escaneo de la IMAGEN: Trivy inspecciona tanto las capas del SO como las LIBRERÍAS Java
+      # empaquetadas dentro del jar → cubre SCA de dependencias + imagen en un paso, sin resolver
+      # POMs remotos (evita el rate-limit de Maven Central). Bloqueante en crítico.
+      - name: Escaneo de cadena de suministro (Trivy image — deps + imagen)
+        run: trivy image --scanners vuln --severity CRITICAL --exit-code 1 --ignore-unfixed asset-inventory-service:ci
