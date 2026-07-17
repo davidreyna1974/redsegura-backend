@@ -21,6 +21,12 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
   el `openapi.yaml` (fuente de verdad) se publica como recurso estático en `/openapi.yaml`.
 - Trazado por servicio en `documentos/matriz_rnf.md`; diferidos en `preparacion_produccion.md`.
 
+### Transversal (POM padre) — Seguridad
+- **Spring Boot 3.3.5 → 3.5.16** para corregir **5 CVE CRÍTICOS** que el nuevo gate de SCA (Trivy,
+  RNF-08) detectó en dependencias transitivas: Tomcat `tomcat-embed-core` 10.1.31 (CVE-2025-24813
+  RCE, CVE-2026-43512/43515 bypass de auth → 10.1.55) y `spring-security-web` 6.3.4 (CVE-2026-22732
+  → 6.5.11). Ajustes: springdoc 2.6.0 → 2.8.17; `@MockBean` → `@MockitoBean`.
+
 ### `asset-inventory-service` — Corregido
 - **`PUT /devices/{id}` ahora es reemplazo completo (RFC 9110)** — `HALLAZGO-LIVE-01`. Antes delegaba
   en la ruta de merge de PATCH y no nulificaba los campos omitidos, impidiendo conmutar un dispositivo

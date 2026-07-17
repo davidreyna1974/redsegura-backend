@@ -28,6 +28,20 @@ servicio empaquetado y desplegado.
 | 9 | `POST /devices/bulk` | ADM | importación masiva asíncrona | `202` + `jobId`, `status: QUEUED` | ✅ |
 | 10 | `GET /devices/bulk/jobs/{jobId}` | ADM/OPE/AUD | estado del job | `200` `status: COMPLETED`, `succeeded: 2/2` | ✅ |
 
+### Endurecimiento a producción (re-verificado en vivo, 2026-07-17, sobre Spring Boot 3.5.16)
+
+| Caso | Resultado | Estado |
+|---|---|---|
+| RNF-29 — sin token en endpoint protegido | `401` | ✅ |
+| RNF-29 — token válido (issuer+audience OK) opera normal | `201`/`200` end-to-end | ✅ |
+| RNF-27 — `/openapi.yaml` (contrato estático) sin token | `200` (estable, 5/5) | ✅ |
+| RNF-27 — `/v3/api-docs` y `/swagger-ui/index.html` | `200` | ✅ |
+| RBAC — Operador (solo lectura) intenta escribir | `403` | ✅ |
+| Redacción de IP para Auditor | `10.x.x.***` | ✅ |
+
+> Nota: en arranque en frío, las rutas de doc pueden dar un `401` fugaz mientras springdoc termina de
+> inicializarse (tras `readiness=UP`); se estabilizan en `200` en segundos. No es un defecto funcional.
+
 ### Dimensiones transversales de seguridad (verificadas en vivo)
 
 | Caso | Resultado | Estado |
