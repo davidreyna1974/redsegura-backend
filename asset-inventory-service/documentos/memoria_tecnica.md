@@ -296,7 +296,7 @@ fuga de internos (RNF-09); Flyway; inyección por constructor.
 ## 10. Cumplimiento y validación (definición de "done") — ✅ QA R1 certificada (2026-07-14)
 ```
 [x] Todos los casos de prueba en ✅ PASS (casos_de_prueba.md — 70/73 PASS, 2 N/A, 1 diferido BSRCH-02).
-[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 100 tests (98 + 2 regresión PUT).
+[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 105 tests (98 + 2 regresión PUT + 5 endurecimiento).
 [x] Verificación por rol/condición ejecutada y documentada (ADM/OPE/AUD).
 [x] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción de direcciones).
 [~] Gobernanza Spectral en verde. **Pact (eventos asset.*): pendiente** hasta que exista el primer consumidor.
