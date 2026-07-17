@@ -15,8 +15,8 @@ import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /** Casos HLTH-01/02/03: probes sin autenticación; readiness refleja el estado real de la BD. */
@@ -30,7 +30,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class HealthControllerTest {
 
   @Autowired private MockMvc mockMvc;
-  @MockBean private DataSource dataSource;
+  @MockitoBean private DataSource dataSource;
 
   /** HLTH-01: el liveness probe responde 200 {"status":"UP"} sin autenticación. */
   @Test
