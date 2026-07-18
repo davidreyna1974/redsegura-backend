@@ -80,4 +80,26 @@ class ObservabilityIT extends AbstractIntegrationTest {
         .contains("\"logger\":\"SECURITY_AUDIT\"")
         .contains("\"traceId\"");
   }
+
+  /**
+   * OBS-03: métrica de dominio (RNF-15) — un alta efectiva incrementa `redsegura.devices.created`.
+   */
+  @Test
+  void domainMetric_countsDeviceCreations() throws Exception {
+    double before = prometheusMeterRegistry.get("redsegura.devices.created").counter().count();
+
+    mockMvc
+        .perform(
+            post("/api/v1/devices")
+                .with(jwt().authorities(new SimpleGrantedAuthority("ADM")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"serialNumber\":\"MET1\",\"hostname\":\"MET-SW\",\"managementIpv4\":"
+                        + "{\"address\":\"10.0.0.77\",\"prefixLength\":24},"
+                        + "\"deviceType\":\"SWITCH\",\"criticality\":\"ALTA\"}"))
+        .andExpect(status().isCreated());
+
+    double after = prometheusMeterRegistry.get("redsegura.devices.created").counter().count();
+    assertThat(after).isEqualTo(before + 1);
+  }
 }

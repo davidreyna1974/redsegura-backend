@@ -27,5 +27,7 @@ public abstract class AbstractIntegrationTest {
     // Por defecto se desactiva el relay del outbox (no requiere RabbitMQ); los tests de mensajería
     // que lo necesitan lo invocan manualmente contra un broker de Testcontainers.
     registry.add("redsegura.outbox.relay.enabled", () -> "false");
+    // La purga de retención se invoca manualmente en su test; desactivamos el scheduler.
+    registry.add("redsegura.retention.enabled", () -> "false");
   }
 }

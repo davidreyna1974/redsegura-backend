@@ -8,6 +8,18 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 
 ## [No publicado]
 
+### `asset-inventory-service` — Endurecimiento a producción (2.º ciclo: contenedor, apagado, datos, métricas)
+- **Contenedor no-root:** el `Dockerfile` crea y usa un usuario sin privilegios (`USER appuser`).
+- **Graceful shutdown:** `server.shutdown=graceful` + `timeout-per-shutdown-phase` → drena peticiones
+  en vuelo y tareas `@Async` del bulk ante `SIGTERM` (rolling deploy de k8s).
+- **Retención de datos operativos:** purga programada (`RetentionCleanup`, desactivable) de
+  `outbox_events` publicados / `idempotency_keys` / `import_jobs` antiguos —evita crecimiento sin
+  límite—; nunca toca eventos pendientes; ventanas configurables. Test `RetentionCleanupIT`.
+- **Métricas de dominio (RNF-15):** contadores `redsegura.devices.created` y
+  `redsegura.outbox.events.published`. Test `ObservabilityIT` (OBS-03).
+- Deuda diferida registrada con disparador (DAST/PRE-REL, runbook/DEPLOY, dashboards+SLO/DEPLOY,
+  mutation testing, LICENSE) en `preparacion_produccion.md`.
+
 ### `asset-inventory-service` — Endurecimiento a producción (RNF-08/27/29/30 · ADR-14..17)
 - **JWT en profundidad (RNF-29/ADR-14):** el `JwtDecoder` valida ahora `issuer` + `audience` +
   expiración además de la firma; un token de otro realm/audiencia → `401`. `AudienceValidator` +
@@ -35,7 +47,7 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
   conserva merge). +2 tests de regresión (`CRUD-04b`/`CRUD-04c`). Detectado por la **verificación en vivo
   de los 10 endpoints** (curl/Postman sobre Docker Compose, 10/10 ✅).
 
-### `asset-inventory-service` — Añadido (implementación, **110 tests, QA certificado**, cobertura ≥ 70 %)
+### `asset-inventory-service` — Añadido (implementación, **112 tests, QA certificado**, cobertura ≥ 70 %)
 - **Scaffolding contract-first** (ADR-05): openapi-generator produce las interfaces de API
   (`DevicesApi`/`BulkApi`/`HealthApi`) y los DTOs; los controladores **implementan** la interfaz
   → el código cumple el contrato por construcción.

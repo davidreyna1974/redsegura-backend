@@ -2,6 +2,8 @@ package com.redsegura.assetinventory.messaging;
 
 import com.redsegura.assetinventory.domain.OutboxEvent;
 import com.redsegura.assetinventory.repository.OutboxRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.slf4j.Logger;
@@ -31,14 +33,21 @@ public class OutboxRelay {
   private final OutboxRepository outboxRepository;
   private final RabbitTemplate rabbitTemplate;
   private final long confirmTimeoutMs;
+  private final Counter eventsPublished;
 
   public OutboxRelay(
       OutboxRepository outboxRepository,
       RabbitTemplate rabbitTemplate,
-      @Value("${redsegura.outbox.relay.confirm-timeout-ms:5000}") long confirmTimeoutMs) {
+      @Value("${redsegura.outbox.relay.confirm-timeout-ms:5000}") long confirmTimeoutMs,
+      MeterRegistry meterRegistry) {
     this.outboxRepository = outboxRepository;
     this.rabbitTemplate = rabbitTemplate;
     this.confirmTimeoutMs = confirmTimeoutMs;
+    // Métrica de dominio (RNF-15): eventos de dominio confirmados por el broker.
+    this.eventsPublished =
+        Counter.builder("redsegura.outbox.events.published")
+            .description("Eventos de dominio publicados al broker (confirmados)")
+            .register(meterRegistry);
   }
 
   /**
@@ -62,6 +71,7 @@ public class OutboxRelay {
           return null;
         });
     pending.forEach(OutboxEvent::markPublished);
+    eventsPublished.increment(pending.size());
     LOG.info("event=outbox_published count={}", pending.size());
     return pending.size();
   }

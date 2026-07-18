@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 
 import com.redsegura.assetinventory.domain.OutboxEvent;
 import com.redsegura.assetinventory.repository.OutboxRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +34,7 @@ class OutboxRelayConfirmFailureTest {
 
   @BeforeEach
   void setup() {
-    relay = new OutboxRelay(outboxRepository, rabbitTemplate, 5000L);
+    relay = new OutboxRelay(outboxRepository, rabbitTemplate, 5000L, new SimpleMeterRegistry());
   }
 
   @Test

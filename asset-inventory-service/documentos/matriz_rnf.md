@@ -24,9 +24,9 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia.
 | RNF-10 Resilience4j (timeouts/retry/CB) | ⬜→🔵 | No hace llamadas síncronas salientes hoy | — | **INT-SYNC** (obligatorio al introducir una) |
 | RNF-11 degradación con gracia | ⬜→🔵 | Sin dependencia síncrona externa hoy | — | **INT-SYNC** |
 | RNF-12 health probes | ✅ | liveness/readiness (readiness verifica Postgres) | `HealthController`, `HealthControllerTest` | — |
-| RNF-13 stateless + HPA | 🟢/🔵 | Servicio stateless | (código) | HPA en **DEPLOY** |
-| RNF-14 database-per-service | ✅ | BD propia; sin acceso a BD de otros | Flyway `db/migration`, `application.yml` | — |
-| RNF-15 métricas Prometheus | ✅ | micrometer-registry-prometheus | `ObservabilityIT` (OBS-01) | — |
+| RNF-13 stateless + HPA | 🟢/🔵 | Servicio stateless; **graceful shutdown** (drena en SIGTERM); imagen **no-root** | `application.yml` (`server.shutdown`), `Dockerfile` (`USER`) | HPA en **DEPLOY** |
+| RNF-14 database-per-service | ✅ | BD propia; sin acceso a BD de otros; **retención** de datos operativos (purga) | Flyway `db/migration`, `RetentionCleanup`, `RetentionCleanupIT` | — |
+| RNF-15 métricas Prometheus | ✅ | micrometer + **métricas de dominio** (`redsegura.devices.created`, `redsegura.outbox.events.published`) | `ObservabilityIT` (OBS-01/03) | Dashboards+SLO en **DEPLOY** |
 | RNF-16 trazas distribuidas | 🟢/🔵 | tracing-bridge-otel; traceId en logs | `ObservabilityIT`, `OutboxWriter` | Export por entorno (OTLP) en **DEPLOY** |
 | RNF-17 logs estructurados sin PII | ✅ | JSON logs; redacción; sin secretos | `logback-spring.xml`, `MgmtIpRedactor` | — |
 | RNF-18 cobertura ≥ 70 % | ✅ | jacoco:check ligado a `verify` | `pom.xml`, CI | — |
