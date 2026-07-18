@@ -6,7 +6,7 @@
 
 **Módulo:** asset-inventory-service · **Ronda:** R1 (2026-07-14) + **R1.1** (2026-07-15) + **R1.2**
 (2026-07-15) + **R1.3** (2026-07-17, endurecimiento) **✅ CERTIFICADA** · **Versión de código:**
-`develop`; **109 tests** automatizados en verde (98 R1.1 + 2 regresión PUT + 9 de endurecimiento
+`develop`; **110 tests** automatizados en verde (98 R1.1 + 2 regresión PUT + 9 de endurecimiento
 RNF-08/27/29/30, incl. **caminos negativos** JWT issuer/audience y confirm-failure del outbox).
 Reporte consolidado:
 [`../../../management/documentos/qa/reporte_qa.md`](../../../management/documentos/qa/reporte_qa.md) ·
@@ -167,7 +167,7 @@ Cierre de los RNF de etapa DEV (ver [`matriz_rnf.md`](matriz_rnf.md)).
 | SEC-07 | SEC | (config) `issuer`/`audience` externalizados; token de otro realm → 401 | validado por `JwtDecoder` (iss+aud+exp) | ✅ |
 | SEC-08 | SEC | **(negativo)** validador de producción con token de **otro issuer** → rechazado; **otra audiencia** → rechazado; correcto → aceptado | `JwtIssuerAudienceValidationTest` (composición iss+aud cableada) | ✅ |
 | EVT-04 | RN30 | Relay marca publicado **solo tras ACK** del broker (publisher confirms) | evento entregado y `publishedAt` set (`OutboxRelayIT`) | ✅ |
-| EVT-05 | RN30 | Lote tomado con `FOR UPDATE SKIP LOCKED` (seguro multi-réplica) | query nativa; lote correcto. **Comportamiento concurrente**: test determinista planificado en [`plan_test_concurrencia_outbox.md`](plan_test_concurrencia_outbox.md) | ✅ (presencia) / 🟡 (concurrencia planificada) |
+| EVT-05 | RN30 | Lote tomado con `FOR UPDATE SKIP LOCKED` — **comportamiento concurrente verificado**: con la 1.ª tx bloqueando el lote, la 2.ª lo **salta** (no se bloquea ni re-toma) | `OutboxConcurrencyIT` (determinista, 50 corridas sin flaky, con "diente"); plan: [`plan_test_concurrencia_outbox.md`](plan_test_concurrencia_outbox.md) | ✅ |
 | EVT-06 | RN30 | **(negativo)** el broker **no confirma** (nack/timeout) → el evento **no** se marca publicado (queda pendiente, se reintenta) | `OutboxRelayConfirmFailureTest` | ✅ |
 | APIDOC-01 | DOC | `/openapi.yaml` servido en runtime sin token | 200 + contrato (`ApiDocsIT`) | ✅ |
 | APIDOC-02 | DOC | `/v3/api-docs` (springdoc) disponible sin token | 200 (`ApiDocsIT`) | ✅ |
@@ -185,7 +185,7 @@ Cierre de los RNF de etapa DEV (ver [`matriz_rnf.md`](matriz_rnf.md)).
 
 - **Ronda R1 certificada (2026-07-14):** Total **73** casos · ✅ PASS: **71** · N/A: **2** (RN-05/RN-07,
   imposibles por construcción) · ⏳ diferido: **0**. BSRCH-02 (acentos) cerrado con `unaccent` (V6)
-  tras la certificación. Verificado con `mvn verify` (**109 tests** automatizados —98 R1.1 + 2 de
+  tras la certificación. Verificado con `mvn verify` (**110 tests** automatizados —98 R1.1 + 2 de
   regresión PUT + 9 de endurecimiento RNF-08/27/29/30 incl. caminos negativos—, cobertura ≥70%,
   0 lint). Categorías `UI/VIS` son del repo `frontend`.
 - **Verificación en vivo de endpoints (2026-07-15):** los 10 endpoints por HTTP real

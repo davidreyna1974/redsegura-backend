@@ -4,8 +4,14 @@
 > **determinista** que prueba la propiedad de concurrencia del relay del outbox (Opción A del análisis
 > previo). No es el reporte de resultados; es el diseño y los criterios con los que se aceptará.
 
-**Servicio:** asset-inventory-service · **Fecha:** 2026-07-17 · **Estado:** propuesto (pendiente de
-ejecución) · **Autor:** equipo de desarrollo
+**Servicio:** asset-inventory-service · **Fecha:** 2026-07-17 · **Estado:** ✅ **EJECUTADO**
+(`OutboxConcurrencyIT`, 2026-07-17) · **Autor:** equipo de desarrollo
+
+> **Resultado:** implementado según §4. **Todos los criterios de éxito (§5) cumplidos:** correcto;
+> determinista (latches, sin `sleep`); **50 corridas consecutivas en verde, 0 flaky** (7,1 s);
+> **"diente" confirmado** (quitar `SKIP LOCKED` → T2 se bloquea → `lock timeout` → el test falla);
+> aislado y < 10 s; gatekeeper en verde con **suite → 110 tests**; `EVT-05` y `matriz_rnf.md`
+> actualizados. No se necesitó el plan B (opción C+D).
 
 ---
 
@@ -132,12 +138,12 @@ memoria técnica y en `preparacion_produccion.md`. **No se mergea un test flaky*
 ## 9. Definición de "done" de este plan
 
 ```
-[ ] OutboxConcurrencyIT implementado según §4, determinista (§5.2).
-[ ] 50 corridas locales en verde (§5.3) + verde en CI.
-[ ] Verificado el "diente": quitar SKIP LOCKED hace fallar el test (§5.4).
-[ ] Gatekeeper completo en verde; suite → 110 tests (§5.6).
-[ ] casos_de_prueba.md (EVT-05) y matriz_rnf.md actualizados (§5.7).
-[ ] memoria_tecnica.md registra el cierre de la verificación de concurrencia de RNF-30.
+[x] OutboxConcurrencyIT implementado según §4, determinista (§5.2).
+[x] 50 corridas locales en verde (§5.3) + verde en CI.
+[x] Verificado el "diente": quitar SKIP LOCKED hace fallar el test (§5.4).
+[x] Gatekeeper completo en verde; suite → 110 tests (§5.6).
+[x] casos_de_prueba.md (EVT-05) y matriz_rnf.md actualizados (§5.7).
+[x] memoria_tecnica.md registra el cierre de la verificación de concurrencia de RNF-30.
 ```
 
 ## 10. Referencias
