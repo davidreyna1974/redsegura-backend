@@ -90,11 +90,18 @@ public class SecurityConfig {
       @Value("${redsegura.security.issuer}") String issuer,
       @Value("${redsegura.security.audience}") String audience) {
     NimbusJwtDecoder decoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
-    OAuth2TokenValidator<Jwt> withIssuer = JwtValidators.createDefaultWithIssuer(issuer);
-    OAuth2TokenValidator<Jwt> validator =
-        new DelegatingOAuth2TokenValidator<>(withIssuer, new AudienceValidator(audience));
-    decoder.setJwtValidator(validator);
+    decoder.setJwtValidator(jwtValidator(issuer, audience));
     return decoder;
+  }
+
+  /**
+   * Validador compuesto del token (RNF-29/ADR-14): expiración + <b>issuer</b> ({@link
+   * JwtValidators}) + <b>audience</b> ({@link AudienceValidator}). Extraído para que la validación
+   * exacta de producción sea verificable en un test sin depender de un Keycloak vivo.
+   */
+  static OAuth2TokenValidator<Jwt> jwtValidator(String issuer, String audience) {
+    return new DelegatingOAuth2TokenValidator<>(
+        JwtValidators.createDefaultWithIssuer(issuer), new AudienceValidator(audience));
   }
 
   /** Extrae los roles de realm de Keycloak ({@code realm_access.roles}) como authorities. */

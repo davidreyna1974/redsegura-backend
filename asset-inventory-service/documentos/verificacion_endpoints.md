@@ -3,7 +3,7 @@
 Registro de la **prueba manual/en vivo** de los **10 endpoints** del contrato, ejecutada por
 HTTP real (curl / colección Postman) contra el **entorno de desarrollo** (Docker Compose:
 PostgreSQL + RabbitMQ + Keycloak sembrado + el servicio). Complementa la certificación
-automatizada (105 tests, gatekeeper `mvn verify`) con una pasada de humo end-to-end sobre el
+automatizada (109 tests, gatekeeper `mvn verify`) con una pasada de humo end-to-end sobre el
 servicio empaquetado y desplegado.
 
 - **Fecha:** 2026-07-15
@@ -82,12 +82,12 @@ La prueba en vivo detectó un defecto que la suite automatizada **no** cubría:
   `ADDRESS_INVALID`. `update()` (PATCH) conserva la semántica de merge (`fullReplace=false`).
 - **Tests de regresión añadidos** (`DeviceCertificationIT`): `CRUD-04b`
   (`replace_isFullReplacement_clearsOmittedFields`) y `CRUD-04c`
-  (`replace_withNoManagementAddress_returns422`). Suite: **98 → 105 tests**.
+  (`replace_withNoManagementAddress_returns422`). Suite: **98 → 109 tests**.
 - **Verificación en vivo tras el fix:** PUT con solo IPv6 → `managementIpv4: null`,
   `vendor: null`, `model: null`, `managementIpv6` fijado. ✅
 - **Blast radius:** **local** (lógica interna de `asset-inventory-service`); no cambia el
   contrato de API (mismo esquema `DeviceUpdateFull`) ni el catálogo de eventos. Gatekeeper en
-  verde (105 tests, cobertura ≥ 70 %, lint).
+  verde (109 tests, cobertura ≥ 70 %, lint).
 
 ---
 

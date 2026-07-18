@@ -35,7 +35,7 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
   conserva merge). +2 tests de regresión (`CRUD-04b`/`CRUD-04c`). Detectado por la **verificación en vivo
   de los 10 endpoints** (curl/Postman sobre Docker Compose, 10/10 ✅).
 
-### `asset-inventory-service` — Añadido (implementación, **105 tests, QA certificado**, cobertura ≥ 70 %)
+### `asset-inventory-service` — Añadido (implementación, **109 tests, QA certificado**, cobertura ≥ 70 %)
 - **Scaffolding contract-first** (ADR-05): openapi-generator produce las interfaces de API
   (`DevicesApi`/`BulkApi`/`HealthApi`) y los DTOs; los controladores **implementan** la interfaz
   → el código cumple el contrato por construcción.
