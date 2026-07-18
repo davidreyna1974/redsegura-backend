@@ -25,6 +25,8 @@ import com.redsegura.assetinventory.messaging.OutboxWriter;
 import com.redsegura.assetinventory.messaging.RabbitConfig;
 import com.redsegura.assetinventory.repository.DeviceRepository;
 import com.redsegura.assetinventory.repository.IdempotencyRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -56,6 +58,7 @@ public class DeviceService {
   private final ObjectMapper objectMapper;
   private final OutboxWriter outboxWriter;
   private final IpAddressNormalizer ipNormalizer;
+  private final Counter devicesCreated;
 
   public DeviceService(
       DeviceRepository repository,
@@ -64,7 +67,8 @@ public class DeviceService {
       AuditorAware<String> auditorAware,
       ObjectMapper objectMapper,
       OutboxWriter outboxWriter,
-      IpAddressNormalizer ipNormalizer) {
+      IpAddressNormalizer ipNormalizer,
+      MeterRegistry meterRegistry) {
     this.repository = repository;
     this.idempotencyRepository = idempotencyRepository;
     this.mapper = mapper;
@@ -72,6 +76,12 @@ public class DeviceService {
     this.ipNormalizer = ipNormalizer;
     this.objectMapper = objectMapper;
     this.outboxWriter = outboxWriter;
+    // Métrica de dominio (RNF-15): altas de dispositivo efectivas (no cuenta los replays
+    // idempotentes).
+    this.devicesCreated =
+        Counter.builder("redsegura.devices.created")
+            .description("Dispositivos dados de alta en el inventario")
+            .register(meterRegistry);
   }
 
   /**
@@ -120,6 +130,7 @@ public class DeviceService {
     entity.setLocation(toDomainLocation(req.getLocation()));
     VersionedDevice created = save(entity);
     outboxWriter.record(RabbitConfig.ROUTING_ASSET_CREATED, created.body(), null);
+    devicesCreated.increment();
     if (hasKey) {
       idempotencyRepository.saveAndFlush(
           new IdempotencyRecord(idempotencyKey, currentUser, requestHash, created.body().getId()));

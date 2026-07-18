@@ -2,6 +2,12 @@ spring:
   application:
     name: asset-inventory-service
 
+  # Apagado ordenado (graceful shutdown): ante SIGTERM (p. ej. rolling deploy de k8s), el servidor
+  # deja de aceptar conexiones nuevas y drena las peticiones en vuelo antes de terminar. El executor
+  # del bulk (@Async) también espera a completar sus tareas (ver AsyncConfig).
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
   # Configuración por entorno (12-factor). En tests, Testcontainers la sobrescribe.
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/asset_inventory}
@@ -39,6 +45,7 @@ spring:
 
 server:
   port: 8081
+  shutdown: graceful
 
 # OpenAPI navegable en runtime (RNF-27/ADR-17). Swagger UI carga el contrato openapi.yaml (fuente de
 # verdad contract-first) servido como recurso estatico en /openapi.yaml. Doc sin autenticacion.
@@ -59,6 +66,14 @@ redsegura:
     relay:
       enabled: ${OUTBOX_RELAY_ENABLED:true}
       fixed-delay: ${OUTBOX_RELAY_FIXED_DELAY:2000}
+  # Retención de datos operativos: purga programada de filas que solo harían crecer las tablas sin
+  # límite (outbox ya publicado, claves de idempotencia, jobs de importación). Ventanas en días.
+  retention:
+    enabled: ${RETENTION_ENABLED:true}
+    cron: ${RETENTION_CRON:0 30 3 * * *}
+    outbox-published-days: ${RETENTION_OUTBOX_DAYS:7}
+    idempotency-days: ${RETENTION_IDEMPOTENCY_DAYS:2}
+    import-jobs-days: ${RETENTION_IMPORT_JOBS_DAYS:30}
 
 # Observabilidad (RNF-15..17). Los probes del contrato viven en /api/v1/health/*;
 # Actuator expone health + métricas Prometheus. El traceId/spanId (Micrometer Tracing) se

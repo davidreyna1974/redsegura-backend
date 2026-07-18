@@ -14,5 +14,10 @@ RUN mvn -B -pl asset-inventory-service -am -DskipTests clean package
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /workspace/asset-inventory-service/target/asset-inventory-service-*.jar app.jar
+# Hardening: ejecutar como usuario NO-root (buena práctica de contenedores; reduce el impacto si el
+# proceso se ve comprometido y satisface los escáneres de configuración).
+RUN useradd --system --uid 1001 --home-dir /app --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+USER appuser
 EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]

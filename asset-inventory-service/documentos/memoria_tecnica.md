@@ -4,7 +4,7 @@
 > Memoria de "qué se hizo y por qué". Referencias: [`propuesta_modulo.md`](propuesta_modulo.md),
 > [`casos_de_prueba.md`](casos_de_prueba.md), [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 110 tests, cobertura ≥ 70 %, CI
+**Estado:** implementado y **✅ certificado (QA R1, 2026-07-14)** — 112 tests, cobertura ≥ 70 %, CI
 activo · **Última actualización:** 2026-07-15
 
 > **Endurecimiento a producción (2026-07-15) — RNF-08/27/29/30, ADR-14..17:** se cerraron los cuatro
@@ -299,7 +299,7 @@ fuga de internos (RNF-09); Flyway; inyección por constructor.
 ## 10. Cumplimiento y validación (definición de "done") — ✅ QA R1 certificada (2026-07-14)
 ```
 [x] Todos los casos de prueba en ✅ PASS (casos_de_prueba.md — 70/73 PASS, 2 N/A, 1 diferido BSRCH-02).
-[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 110 tests (98 + 2 regresión PUT + 5 endurecimiento).
+[x] Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70 % — 112 tests (98 + 2 regresión PUT + 5 endurecimiento).
 [x] Verificación por rol/condición ejecutada y documentada (ADM/OPE/AUD).
 [x] Gate de seguridad de endpoints verificado (escritura solo ADM; Auditor→403; redacción de direcciones).
 [~] Gobernanza Spectral en verde. **Pact (eventos asset.*): pendiente** hasta que exista el primer consumidor.
