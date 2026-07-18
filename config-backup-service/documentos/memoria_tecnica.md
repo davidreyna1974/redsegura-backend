@@ -28,8 +28,20 @@ de `asset.*` (habilita Pact). Detalle en `propuesta_modulo.md`.
 | Errores | Handler RFC 7807 (`application/problem+json`) | ADR-08 |
 
 ## 3. Estructura del proyecto
-_(a completar al scaffoldear: `app/` (api, domain, services, connectors, messaging, db), `tests/`,
-`alembic/`, `pyproject.toml`, `Dockerfile`.)_
+```
+config-backup-service/
+├── pyproject.toml          # deps + config de ruff/mypy/pytest/coverage
+├── requirements.txt        # deps + herramientas del gate (lo instala el CI)
+├── app/
+│   ├── main.py             # create_app() + instancia (uvicorn: app.main:app)
+│   ├── config.py           # Settings 12-factor (pydantic-settings, prefijo CBS_)
+│   ├── errors.py           # handlers RFC 7807 (application/problem+json)
+│   ├── schemas.py          # modelos Pydantic del contrato (health/enums; resto por unidad)
+│   └── api/health.py       # probes liveness/readiness (checks inyectables)
+└── tests/                  # pytest + TestClient (health, errores, config)
+```
+_(se ampliará: `db/` (SQLAlchemy+Alembic), `connectors/` (SSH), `messaging/` (outbox+consumer),
+`services/` al implementar el núcleo.)_
 
 ## 4. Contratos consumidos/producidos (verificados)
 - **Consume:** `asset.*` (cola `q.config-backup.asset-events`) — ver `propuesta_modulo.md §4.1`.
@@ -40,7 +52,7 @@ _(a completar al scaffoldear: `app/` (api, domain, services, connectors, messagi
 _(bitácora por fase — se llena al avanzar.)_
 | Hito | Estado | Nota |
 |---|---|---|
-| Scaffold + gatekeeper | ⏳ | |
+| Scaffold + gatekeeper | ✅ | FastAPI + health + errores RFC 7807 + config; ruff/mypy(strict)/pytest verdes, cobertura 100%; CI activo (path-triggered) |
 | Persistencia + consumo asset.* + Pact | ⏳ | |
 | Núcleo (backup/git/diff/drift/schedules/jobs) | ⏳ | |
 | Seguridad + observabilidad + endurecimiento | ⏳ | |
