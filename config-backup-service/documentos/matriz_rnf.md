@@ -24,14 +24,14 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-11 degradación con gracia | 🟡 | Fallo de un dispositivo no tumba el lote | FLOW-02 | DEV |
 | RNF-12 health probes | 🟡 | liveness/readiness (BD/broker/Git) | HLTH-01..03 | DEV |
 | RNF-13 stateless + HPA | 🟢/🔵 | App stateless (estado en BD/Git/broker); graceful shutdown | — | HPA en **DEPLOY** |
-| RNF-14 database-per-service | 🟡 | BD propia (Postgres) + repo Git propio | Alembic | DEV |
+| RNF-14 database-per-service | 🟢 | BD propia (Postgres) + **Alembic** (vista de dispositivos, processed_events); repo Git al implementar núcleo | `alembic/`, `RetentionCleanupIT`→N/A; `test_asset_event_handler` (Testcontainers) | DEV |
 | RNF-15 métricas Prometheus + dominio | 🟡 | `prometheus-fastapi-instrumentator` + contadores (respaldos, drift) | ObservabilityIT | DEV; dashboards **DEPLOY** |
 | RNF-16 trazas distribuidas | 🟡 | OpenTelemetry FastAPI; traceId en logs | — | export por entorno **DEPLOY** |
 | RNF-17 logs sin PII/secretos | 🟡 | Logs JSON; **credenciales SSH redactadas** | CYBER-01 | DEV |
 | RNF-18 cobertura ≥ 70 % | 🟡 | `pytest --cov` en el gate | CI | DEV |
 | RNF-19 gatekeeper en CI | 🟡 | ruff + mypy + pytest (activar workflow) | CI | DEV |
 | RNF-20 documentación pre-código | ✅ | propuesta/casos/memoria/matriz (este paquete) | `documentos/` | — |
-| **RNF-21 Pact** | 🟡 | **Consumidor de `asset.*` verificado (INT-CONS)**; par con `asset-inventory` | PACT-01 | **INT-CONS — se activa ahora (1.er consumidor)** |
+| **RNF-21 Pact** | 🟢 | **Consumidor de `asset.*` verificado (INT-CONS)** contra el esquema compartido; par con `asset-inventory` cerrado. Falta el wiring del broker (pika) → núcleo | `test_asset_event_contract` (PACT-01) | **INT-CONS activado** |
 | RNF-22 paridad Compose ↔ k8s | 🔵 | 12-factor | — | **DEPLOY** |
 | RNF-23 IaC (Terraform) | 🔵 | — | — | **DEPLOY** |
 | RNF-24 presupuesto AWS | ⬜ | — | — | Nivel infra |
