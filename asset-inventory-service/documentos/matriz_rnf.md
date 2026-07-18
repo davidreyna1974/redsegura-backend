@@ -39,8 +39,8 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia.
 | RNF-25/26 accesibilidad/UX dashboard | ⬜ | — | — | Repo `frontend` |
 | RNF-27 OpenAPI + **Swagger UI runtime** | ✅ | springdoc sirve Swagger UI + `/v3/api-docs`; `/openapi.yaml` estático | `pom.xml` (springdoc), `application.yml`, `ApiDocsIT` | — |
 | RNF-28 SemVer + CHANGELOG | ✅ | Tags por servicio; CHANGELOG Keep a Changelog | `CHANGELOG.md` | — |
-| RNF-29 token issuer/audience | ✅ | JwtDecoder valida firma+iss+aud+exp | `SecurityConfig`, `AudienceValidator`, `AudienceValidatorTest` | — |
-| RNF-30 entrega garantizada de eventos | ✅ | Outbox + publisher confirms + relay `SKIP LOCKED` + DLQ (consumidor) | `OutboxRelay`, `OutboxRepository`, `OutboxRelayIT` | — |
+| RNF-29 token issuer/audience | ✅ | JwtDecoder valida firma+iss+aud+exp | `SecurityConfig`, `AudienceValidator`, `AudienceValidatorTest`, `JwtIssuerAudienceValidationTest` (camino negativo iss/aud) | — |
+| RNF-30 entrega garantizada de eventos | ✅ | Outbox + publisher confirms + relay `SKIP LOCKED` + DLQ (consumidor) | `OutboxRelay`, `OutboxRepository`, `OutboxRelayIT`, `OutboxRelayConfirmFailureTest` (camino negativo sin ACK) | — |
 | RNF-31 readiness (esta matriz) | ✅ | Matriz + checklist mantenidas | este archivo + `preparacion_produccion.md` | — |
 
 ## Resumen
