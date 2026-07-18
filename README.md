@@ -29,7 +29,7 @@ vive en el repositorio umbrella `management`:
 
 > Estado actual: **Fase A en curso.** `asset-inventory-service` **implementado** (CRUD + búsqueda +
 > RBAC + ETag/If-Match + idempotencia + redacción por rol + seguridad + observabilidad + eventos
-> outbox + importación masiva; 109 tests, cobertura ≥ 70 %, **CI activo y gateando `main`**). Resto de
+> outbox + importación masiva; 110 tests, cobertura ≥ 70 %, **CI activo y gateando `main`**). Resto de
 > servicios de Fase A sin iniciar. Contratos OpenAPI de Fase A definidos.
 
 > **Probar un servicio localmente (vía Postman/curl):** infra de desarrollo compartida con Docker

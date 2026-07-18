@@ -40,7 +40,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia.
 | RNF-27 OpenAPI + **Swagger UI runtime** | ✅ | springdoc sirve Swagger UI + `/v3/api-docs`; `/openapi.yaml` estático | `pom.xml` (springdoc), `application.yml`, `ApiDocsIT` | — |
 | RNF-28 SemVer + CHANGELOG | ✅ | Tags por servicio; CHANGELOG Keep a Changelog | `CHANGELOG.md` | — |
 | RNF-29 token issuer/audience | ✅ | JwtDecoder valida firma+iss+aud+exp | `SecurityConfig`, `AudienceValidator`, `AudienceValidatorTest`, `JwtIssuerAudienceValidationTest` (camino negativo iss/aud) | — |
-| RNF-30 entrega garantizada de eventos | ✅ | Outbox + publisher confirms + relay `SKIP LOCKED` + DLQ (consumidor) | `OutboxRelay`, `OutboxRepository`, `OutboxRelayIT`, `OutboxRelayConfirmFailureTest` (camino negativo sin ACK) | — |
+| RNF-30 entrega garantizada de eventos | ✅ | Outbox + publisher confirms + relay `SKIP LOCKED` (concurrencia verificada) + DLQ (consumidor) | `OutboxRelay`, `OutboxRepository`, `OutboxRelayIT`, `OutboxRelayConfirmFailureTest` (sin ACK), `OutboxConcurrencyIT` (2 réplicas: la 2.ª salta el lote bloqueado) | — |
 | RNF-31 readiness (esta matriz) | ✅ | Matriz + checklist mantenidas | este archivo + `preparacion_produccion.md` | — |
 
 ## Resumen
