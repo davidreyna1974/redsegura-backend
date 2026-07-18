@@ -18,7 +18,7 @@ sistema** (arquitectura, planificación, QA) vive en el repo umbrella `managemen
 ## 🧩 Documentación y artefactos por microservicio
 Cada microservicio es **dueño** de su documentación y material de prueba, en su propia carpeta:
 - `<servicio>/documentos/`: `propuesta_modulo.md` · `casos_de_prueba.md` · `memoria_tecnica.md` ·
-  `verificacion_endpoints.md` (reporte de la verificación en vivo).
+  `matriz_rnf.md` (trazabilidad de RNF) · `verificacion_endpoints.md` (verificación en vivo).
 - `<servicio>/postman/`: colección Postman + `GUIA_PRUEBAS_POSTMAN.md`.
 
 Implementado: **`asset-inventory-service`** ([documentos](../asset-inventory-service/documentos/) ·

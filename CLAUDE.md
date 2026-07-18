@@ -150,9 +150,10 @@ codigo/backend/<servicio>/
 ├── openapi.yaml                        ← contrato de API (fuente de verdad)
 ├── Dockerfile
 ├── documentos/
-│   ├── propuesta_modulo.md             ← planificación previa al código
+│   ├── propuesta_modulo.md             ← planificación previa al código (incl. revisión de RNF §8b)
 │   ├── casos_de_prueba.md              ← casos definidos ANTES de codificar
 │   ├── memoria_tecnica.md              ← documento vivo, actualizado por fase
+│   ├── matriz_rnf.md                   ← trazabilidad de RNF → implementación/evidencia/estado
 │   └── verificacion_endpoints.md       ← reporte de la verificación en vivo (10/10 endpoints)
 └── postman/
     ├── <servicio>.postman_collection.json   ← colección con ejemplos + respuestas esperadas
@@ -305,7 +306,7 @@ microservicio) con toda la superficie funcional del contrato **implementada**; l
 sin iniciar.
 
 **Fundación completada:** arquitectura global documentada (memoria técnica, diagrama,
-estándares, eventos, protocolo de QA — en `management`, **ADR-01..13**); POM padre del monorepo
+estándares, eventos, protocolo de QA — en `management`, **ADR-01..17**); POM padre del monorepo
 (Java 21, Spring Boot 3.5.16, calidad, MapStruct); **5 contratos OpenAPI de Fase A** validados y
 **sintonizados con estándares de industria** (RFC 7807, health probes, Idempotency-Key,
 ETag/If-Match) y **gobernados en CI con Spectral** (`.spectral.yaml`, ADR-12); documentación de
