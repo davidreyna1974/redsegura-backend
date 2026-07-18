@@ -167,7 +167,7 @@ Cierre de los RNF de etapa DEV (ver [`matriz_rnf.md`](matriz_rnf.md)).
 | SEC-07 | SEC | (config) `issuer`/`audience` externalizados; token de otro realm → 401 | validado por `JwtDecoder` (iss+aud+exp) | ✅ |
 | SEC-08 | SEC | **(negativo)** validador de producción con token de **otro issuer** → rechazado; **otra audiencia** → rechazado; correcto → aceptado | `JwtIssuerAudienceValidationTest` (composición iss+aud cableada) | ✅ |
 | EVT-04 | RN30 | Relay marca publicado **solo tras ACK** del broker (publisher confirms) | evento entregado y `publishedAt` set (`OutboxRelayIT`) | ✅ |
-| EVT-05 | RN30 | Lote tomado con `FOR UPDATE SKIP LOCKED` (seguro multi-réplica) | query nativa; lote correcto | ✅ |
+| EVT-05 | RN30 | Lote tomado con `FOR UPDATE SKIP LOCKED` (seguro multi-réplica) | query nativa; lote correcto. **Comportamiento concurrente**: test determinista planificado en [`plan_test_concurrencia_outbox.md`](plan_test_concurrencia_outbox.md) | ✅ (presencia) / 🟡 (concurrencia planificada) |
 | EVT-06 | RN30 | **(negativo)** el broker **no confirma** (nack/timeout) → el evento **no** se marca publicado (queda pendiente, se reintenta) | `OutboxRelayConfirmFailureTest` | ✅ |
 | APIDOC-01 | DOC | `/openapi.yaml` servido en runtime sin token | 200 + contrato (`ApiDocsIT`) | ✅ |
 | APIDOC-02 | DOC | `/v3/api-docs` (springdoc) disponible sin token | 200 (`ApiDocsIT`) | ✅ |
