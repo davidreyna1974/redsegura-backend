@@ -53,7 +53,7 @@ _(bitácora por fase — se llena al avanzar.)_
 | Hito | Estado | Nota |
 |---|---|---|
 | Scaffold + gatekeeper | ✅ | FastAPI + health + errores RFC 7807 + config; ruff/mypy(strict)/pytest verdes, cobertura 100%; CI activo (path-triggered) |
-| Persistencia + consumo asset.* + Pact | ⏳ | |
+| Persistencia + consumo asset.* + Pact | ✅ | SQLAlchemy 2.0 + Alembic (vista de dispositivos + processed_events); consumidor idempotente de `asset.*`; **Pact consumidor** verificado (INT-CONS). Tests con Testcontainers Postgres + Alembic real (14 tests, cobertura 98%). **Pendiente (núcleo):** wiring del broker (pika) que entrega los mensajes al handler. |
 | Núcleo (backup/git/diff/drift/schedules/jobs) | ⏳ | |
 | Seguridad + observabilidad + endurecimiento | ⏳ | |
 | QA 4 fases + verificación en vivo + CI | ⏳ | |

@@ -76,11 +76,11 @@
 ## Consumo de eventos `asset.*` (vista de dispositivos) + Pact
 | ID | Cat. | Descripción | Esperado | Estado |
 |---|---|---|---|---|
-| EVT-IN-01 | EVT | `asset.created` → alta en la vista local | dispositivo disponible para respaldo | ⏳ |
-| EVT-IN-02 | EVT | `asset.updated` → actualiza hostname/IP | vista consistente | ⏳ |
-| EVT-IN-03 | EVT | `asset.decommissioned` → marca BAJA (RN-CB6) | no se respalda | ⏳ |
-| EVT-IN-04 | EVT | Reproceso del mismo `eventId` (idempotencia, RNF-E1) | sin efecto duplicado | ⏳ |
-| PACT-01 | EVT/contract | **Pact consumidor** de `asset.*` contra `asset-event.schema.json` (INT-CONS) | consumidor procesa el esquema del productor | ⏳ |
+| EVT-IN-01 | EVT | `asset.created` → alta en la vista local | dispositivo disponible para respaldo (`test_asset_event_handler`) | ✅ |
+| EVT-IN-02 | EVT | `asset.updated` → actualiza hostname/IP | vista consistente | ✅ |
+| EVT-IN-03 | EVT | `asset.decommissioned` → marca BAJA (RN-CB6) | status BAJA en la vista | ✅ |
+| EVT-IN-04 | EVT | Reproceso del mismo `eventId` (idempotencia, RNF-E1) | 2.ª = `duplicate`, no pisa un update posterior | ✅ |
+| PACT-01 | EVT/contract | **Pact consumidor** de `asset.*` contra `asset-event.schema.json` (INT-CONS) | consumidor procesa el esquema del productor; schema con dientes (`test_asset_event_contract`) | ✅ |
 
 ## Producción de eventos `config.*` (outbox)
 | ID | Cat. | Descripción | Esperado | Estado |
