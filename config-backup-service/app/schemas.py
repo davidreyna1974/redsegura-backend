@@ -3,9 +3,12 @@ respaldo/drift/schedule se añaden al implementar cada unidad (contract-first, A
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import StrEnum
+from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 
 
 class HealthStatus(StrEnum):
@@ -56,3 +59,39 @@ class JobStatus(StrEnum):
     IN_PROGRESS = "IN_PROGRESS"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+
+
+# --- DTOs de respuesta (serialización camelCase; leen desde el ORM) ---
+
+
+class CamelModel(BaseModel):
+    """Base de los DTOs: nombres Python en snake_case, JSON en camelCase; lee atributos del ORM."""
+
+    model_config = ConfigDict(
+        alias_generator=to_camel, populate_by_name=True, from_attributes=True
+    )
+
+
+class BackupOut(CamelModel):
+    """Respuesta ``Backup`` del contrato."""
+
+    backup_id: UUID
+    device_id: UUID
+    commit: str | None = None
+    captured_at: datetime
+    unsaved_changes: bool
+    status: BackupStatus
+    failure_reason: str | None = None
+    created_by: str
+
+
+class PageBackup(CamelModel):
+    """Página de respaldos (sobre de paginación estándar)."""
+
+    content: list[BackupOut]
+    page: int
+    size: int
+    total_elements: int
+    total_pages: int
+    first: bool
+    last: bool

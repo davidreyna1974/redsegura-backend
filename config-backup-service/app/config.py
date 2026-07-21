@@ -23,6 +23,11 @@ class Settings(BaseSettings):
     # Repositorio Git interno de configuraciones (RF-07)
     git_repo_path: str = "/var/lib/config-backup/repo"
 
+    # Credenciales SSH de los dispositivos (RNF-06: externalizadas, nunca en código/BD/logs).
+    ssh_username: str = "admin"
+    ssh_password: str = "changeme"
+    ssh_device_type: str = "cisco_ios"
+
     # RNF-07: alcance de conexión SSH — solo CIDRs autorizados (dev/test = red simulada).
     # Lista separada por comas (p. ej. "10.0.0.0/8,192.168.0.0/16").
     allowed_scan_cidrs: str = "10.0.0.0/8,192.168.0.0/16"

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from app.api import health
+from app.api import backups, health
 from app.errors import register_error_handlers
 
 
@@ -17,6 +17,7 @@ def create_app() -> FastAPI:
     )
     register_error_handlers(app)
     app.include_router(health.router, prefix="/api/v1")
+    app.include_router(backups.router, prefix="/api/v1")
     return app
 
 
