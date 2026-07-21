@@ -3,18 +3,26 @@ que se aplican las **migraciones Alembic** reales (fidelidad esquema↔migració
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from pathlib import Path
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from app.connectors.base import DeviceConnector
 from app.db.base import make_engine
 from app.db.models import Backup, Device, OutboxEvent, ProcessedEvent
+from app.db.session import get_session
+from app.deps import get_connector, get_git_store
+from app.git_store import GitStore
 from app.main import create_app
+from app.security import Principal, get_principal
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session
 from testcontainers.postgres import PostgresContainer
+
+from tests.fakes import FakeConnector
 
 
 @pytest.fixture
@@ -45,3 +53,30 @@ def db_session(pg_engine: Engine) -> Iterator[Session]:
         session.execute(delete(Device))
         session.commit()
         yield session
+
+
+@pytest.fixture
+def make_api_client(pg_engine: Engine, tmp_path: Path) -> Callable[..., TestClient]:
+    """Construye un TestClient con las dependencias sobreescritas (sesión de test, principal con
+    roles dados, conector doble, store Git temporal). ``roles=None`` deja el auth real (401)."""
+
+    def _make(
+        roles: tuple[str, ...] | None = ("ADM",),
+        connector: DeviceConnector | None = None,
+    ) -> TestClient:
+        app = create_app()
+
+        def _session() -> Iterator[Session]:
+            with Session(pg_engine) as session:
+                yield session
+
+        app.dependency_overrides[get_session] = _session
+        if roles is not None:
+            principal = Principal(subject="tester", roles=frozenset(roles))
+            app.dependency_overrides[get_principal] = lambda: principal
+        chosen: DeviceConnector = connector or FakeConnector()
+        app.dependency_overrides[get_connector] = lambda: chosen
+        app.dependency_overrides[get_git_store] = lambda: GitStore(str(tmp_path / "repo"))
+        return TestClient(app)
+
+    return _make

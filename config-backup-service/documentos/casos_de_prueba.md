@@ -22,10 +22,10 @@
 ## Respaldo bajo demanda — `POST /devices/{id}/backups`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
 |---|---|---|---|---|---|---|
-| CRUD-01 | POST backups | CRUD | Respaldo exitoso (SSH mock) | ADM/OPE | 201 + `Backup` (commit, capturedAt, unsavedChanges) | ⏳ |
-| SEC-01 | POST backups | SEC | Respaldo con rol sin permiso | AUD | **403** problem+json | ⏳ |
-| SEC-02 | POST backups | SEC | Sin token / token inválido | — | **401** | ⏳ |
-| ERR-01 | POST backups | ERR | Dispositivo inexistente en la vista local | ADM | **404** | ⏳ |
+| CRUD-01 | POST backups | CRUD | Respaldo exitoso (conector doble) | ADM/OPE | 201 + `Backup` (commit, unsavedChanges) (`test_backups_api`) | ✅ |
+| SEC-01 | POST backups | SEC | Respaldo con rol sin permiso | AUD | **403** problem+json (`test_backups_api`) | ✅ |
+| SEC-02 | POST backups | SEC | Sin token / token inválido | — | **401** (`test_backups_api`) | ✅ |
+| ERR-01 | POST backups | ERR | Dispositivo inexistente en la vista local | ADM | **404** (`test_backups_api`) | ✅ |
 | RN-CB2 | (servicio) | RN | running ≠ startup → `unsavedChanges=true` + evento | — | `unsavedChanges:true`; emite `config.unsaved_changes_detected` (`test_backup_service`) | ✅ |
 | RN-CB3 | (servicio) | RN | Respaldo exitoso crea **1 commit** en Git interno | — | Metadato `commit`; versionado (`test_backup_service`/`test_git_store`) | ✅ |
 | RN-CB4 | (servicio) | RN | Fallo de conexión SSH (RF-10) | — | `status:FAILED` + `failureReason`; emite `config.backup_failed` | ✅ |
@@ -43,11 +43,11 @@
 ## Historial y detalle — `GET /backups`, `GET /backups/{id}`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
 |---|---|---|---|---|---|---|
-| CRUD-02 | GET /backups | CRUD | Historial paginado | ADM/OPE/AUD | 200 página estándar | ⏳ |
+| CRUD-02 | GET /backups | CRUD | Historial paginado | ADM/OPE/AUD | 200 página estándar (`test_backups_api`) | ✅ |
 | BSRCH-01 | GET /backups | BSRCH | Filtros hostname/mgmtIp/deviceId/unsavedChanges/status/fechas | ADM | Resultados correctos (AND) | ⏳ |
 | EMPTY-01 | GET /backups | EMPTY | Sin respaldos / sin coincidencias | ADM | 200 lista vacía | ⏳ |
-| CRUD-03 | GET /backups/{id} | CRUD | Detalle existente | ADM/OPE/AUD | 200 `Backup` | ⏳ |
-| ERR-02 | GET /backups/{id} | ERR | Id inexistente | ADM | **404** | ⏳ |
+| CRUD-03 | GET /backups/{id} | CRUD | Detalle existente | ADM/OPE/AUD | 200 `Backup` | ✅ |
+| ERR-02 | GET /backups/{id} | ERR | Id inexistente | ADM | **404** (`test_backups_api`) | ✅ |
 
 ## Diff — `GET /devices/{id}/backups/diff`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
