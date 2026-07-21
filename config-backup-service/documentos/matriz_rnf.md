@@ -17,10 +17,10 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-04 RBAC e2e server-side | 🟡 | Dependencia RBAC por endpoint | tests SEC-01..04 | DEV |
 | RNF-05 TLS + segmentación | 🔵 | — | — | **DEPLOY** |
 | RNF-06 secretos externalizados | 🟡 | **Credenciales SSH** por env/gestor; nunca en BD/logs | config, CYBER-01 | gestor en **DEPLOY** |
-| **RNF-07 alcance de conexión** | 🟡 | **Control técnico de CIDRs autorizados** (solo red simulada); rechaza fuera de alcance | RN-CB1, RNF07-01 | **DEV — aplica a este servicio** |
+| **RNF-07 alcance de conexión** | 🟢 | **Control técnico de CIDRs autorizados**: `assert_in_scope` rechaza fuera de alcance **antes** de conectar | `connectors/scope.py`, `test_scope_resilience`, `test_backup_service` (RNF07-01) | falta cablear a endpoint (→ API) |
 | RNF-08 SCA + imagen (CI) | 🟡 | `pip-audit` + Trivy imagen, bloqueante en crítico | workflow | DEV |
 | RNF-09 sin fuga de internos | 🟡 | Handler RFC 7807 en FastAPI | ERR-*, tests | DEV |
-| **RNF-10 Resilience (timeout/retry)** | 🟡 | **Timeouts + reintentos con backoff en las llamadas SSH (Netmiko)** | RES-01/02 | **DEV — aplica: hay llamadas salientes reales** |
+| **RNF-10 Resilience (timeout/retry)** | 🟢 | **Reintentos con backoff** en las llamadas SSH (`with_retries`); timeout va en el conector Netmiko | `connectors/resilience.py`, `test_scope_resilience` (RES-02) | timeout Netmiko al añadir el conector real |
 | RNF-11 degradación con gracia | 🟡 | Fallo de un dispositivo no tumba el lote | FLOW-02 | DEV |
 | RNF-12 health probes | 🟡 | liveness/readiness (BD/broker/Git) | HLTH-01..03 | DEV |
 | RNF-13 stateless + HPA | 🟢/🔵 | App stateless (estado en BD/Git/broker); graceful shutdown | — | HPA en **DEPLOY** |
@@ -39,7 +39,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-27 OpenAPI + Swagger runtime | 🟡 | FastAPI sirve `/docs` + `/openapi.json`; alinear con contrato | — | DEV |
 | RNF-28 SemVer + CHANGELOG | 🟡 | Tag `config-backup-service-vX`; CHANGELOG | `CHANGELOG.md` | DEV |
 | RNF-29 token issuer/audience | 🟡 | Validación iss+aud+exp en el servicio | tests SEC | DEV |
-| RNF-30 entrega de eventos (produce) | 🟡 | Transactional outbox + confirms + relay `SKIP LOCKED` (patrón asset-inventory) | EVT-OUT-*, tests | DEV |
+| RNF-30 entrega de eventos (produce) | 🟡 | Outbox **write** hecho (`config.backup_completed/failed`, `unsaved_changes_detected`); falta el **relay** (confirms + `SKIP LOCKED`) con el wiring del broker | `messaging/outbox.py`, `test_backup_service` (EVT-OUT-*) | DEV (relay pendiente) |
 | RNF-31 readiness (esta matriz) | 🟡 | Matriz + checklist mantenidas | este archivo | DEV |
 
 ## Diferencias notables vs `asset-inventory-service`

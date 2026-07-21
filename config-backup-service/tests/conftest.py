@@ -9,7 +9,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from app.db.base import make_engine
-from app.db.models import Device, ProcessedEvent
+from app.db.models import Backup, Device, OutboxEvent, ProcessedEvent
 from app.main import create_app
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, delete
@@ -39,6 +39,8 @@ def pg_engine() -> Iterator[Engine]:
 @pytest.fixture
 def db_session(pg_engine: Engine) -> Iterator[Session]:
     with Session(pg_engine) as session:
+        session.execute(delete(OutboxEvent))
+        session.execute(delete(Backup))
         session.execute(delete(ProcessedEvent))
         session.execute(delete(Device))
         session.commit()
