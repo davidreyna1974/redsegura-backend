@@ -26,12 +26,12 @@
 | SEC-01 | POST backups | SEC | Respaldo con rol sin permiso | AUD | **403** problem+json | ⏳ |
 | SEC-02 | POST backups | SEC | Sin token / token inválido | — | **401** | ⏳ |
 | ERR-01 | POST backups | ERR | Dispositivo inexistente en la vista local | ADM | **404** | ⏳ |
-| RN-CB2 | POST backups | RN | running ≠ startup → `unsavedChanges=true` + evento | ADM | 201 `unsavedChanges:true`; emite `config.unsaved_changes_detected` | ⏳ |
-| RN-CB3 | POST backups | RN | Respaldo exitoso crea **1 commit** en Git interno | ADM | Metadato `commit` presente; contenido versionado | ⏳ |
-| RN-CB4 | POST backups | RN | Fallo de conexión SSH (RF-10) | ADM | Registro `status:FAILED` + `failureReason`; emite `config.backup_failed` | ⏳ |
+| RN-CB2 | (servicio) | RN | running ≠ startup → `unsavedChanges=true` + evento | — | `unsavedChanges:true`; emite `config.unsaved_changes_detected` (`test_backup_service`) | ✅ |
+| RN-CB3 | (servicio) | RN | Respaldo exitoso crea **1 commit** en Git interno | — | Metadato `commit`; versionado (`test_backup_service`/`test_git_store`) | ✅ |
+| RN-CB4 | (servicio) | RN | Fallo de conexión SSH (RF-10) | — | `status:FAILED` + `failureReason`; emite `config.backup_failed` | ✅ |
 | RN-CB7 | POST backups | RN | Idempotencia: misma clave + mismo cuerpo | ADM | 2.ª = 1.ª, sin duplicar | ⏳ |
 | CYBER-01 | POST backups | CYBER | Credenciales SSH **no** aparecen en respuesta/logs | ADM | Sin secretos filtrados (RNF-17) | ⏳ |
-| **RNF07-01** | POST backups | SEC/CYBER | Objetivo **fuera de los CIDRs autorizados** (RNF-07) | ADM | **422/403** rechazado por control técnico; **no** intenta conectar | ⏳ |
+| **RNF07-01** | (servicio) | SEC/CYBER | Objetivo **fuera de los CIDRs autorizados** (RNF-07) | — | rechazado; **no** intenta conectar (`test_backup_service`) | ✅ |
 
 ## Respaldo por lotes — `POST /backups` (asíncrono)
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
@@ -85,16 +85,16 @@
 ## Producción de eventos `config.*` (outbox)
 | ID | Cat. | Descripción | Esperado | Estado |
 |---|---|---|---|---|
-| EVT-OUT-01 | EVT | `config.backup_completed` tras éxito | evento válido (schema) en outbox | ⏳ |
-| EVT-OUT-02 | EVT | `config.backup_failed` tras fallo | evento con `failureReason` | ⏳ |
+| EVT-OUT-01 | EVT | `config.backup_completed` tras éxito | evento en outbox (`test_backup_service`) | ✅ |
+| EVT-OUT-02 | EVT | `config.backup_failed` tras fallo | evento con `failureReason` | ✅ |
 | EVT-OUT-03 | EVT | `config.drift_detected` tras drift | evento con `driftRef` | ⏳ |
-| EVT-OUT-04 | EVT | Operación fallida **no** emite evento de éxito | 0 eventos espurios (RNF-E4) | ⏳ |
+| EVT-OUT-04 | EVT | Operación fallida **no** emite evento de éxito | solo `config.backup_failed` (RNF-E4) | ✅ |
 
 ## Resiliencia SSH (RNF-10 — aplica desde DEV)
 | ID | Cat. | Descripción | Esperado | Estado |
 |---|---|---|---|---|
 | RES-01 | RN/ERR | Timeout de conexión SSH | falla acotada (timeout) + `FAILED`, no cuelga | ⏳ |
-| RES-02 | RN | Reintento con backoff ante fallo transitorio | reintenta N veces antes de marcar FAILED | ⏳ |
+| RES-02 | RN | Reintento con backoff ante fallo transitorio | reintenta y luego SUCCESS (`test_scope_resilience`) | ✅ |
 
 ## Categorías N/A
 `UI`, `VIS` → repo `frontend`.
