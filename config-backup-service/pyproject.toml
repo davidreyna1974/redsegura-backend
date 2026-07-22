@@ -16,6 +16,7 @@ dependencies = [
     "GitPython>=3.1,<4.0",
     "PyJWT[crypto]>=2.9,<3.0",
     "netmiko>=4.4,<5.0",
+    "croniter>=3.0,<7.0",
 ]
 
 [project.optional-dependencies]
@@ -27,6 +28,7 @@ dev = [
     "ruff>=0.7,<1.0",
     "mypy>=1.13,<2.0",
     "types-jsonschema>=4.23",
+    "types-croniter>=3.0",
 ]
 
 [tool.ruff]

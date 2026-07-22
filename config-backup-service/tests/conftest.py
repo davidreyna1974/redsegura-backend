@@ -5,18 +5,29 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from app.config import get_settings
 from app.connectors.base import DeviceConnector
 from app.db.base import make_engine
-from app.db.models import Backup, Device, OutboxEvent, ProcessedEvent
+from app.db.models import (
+    Backup,
+    Device,
+    Job,
+    JobResult,
+    OutboxEvent,
+    ProcessedEvent,
+    Schedule,
+)
 from app.db.session import get_session
-from app.deps import get_connector, get_git_store
+from app.deps import get_connector, get_git_store, get_job_dispatcher
 from app.git_store import GitStore
 from app.main import create_app
 from app.security import Principal, get_principal
+from app.services.jobs import run_job
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session
@@ -47,6 +58,9 @@ def pg_engine() -> Iterator[Engine]:
 @pytest.fixture
 def db_session(pg_engine: Engine) -> Iterator[Session]:
     with Session(pg_engine) as session:
+        session.execute(delete(JobResult))
+        session.execute(delete(Job))
+        session.execute(delete(Schedule))
         session.execute(delete(OutboxEvent))
         session.execute(delete(Backup))
         session.execute(delete(ProcessedEvent))
@@ -75,8 +89,18 @@ def make_api_client(pg_engine: Engine, tmp_path: Path) -> Callable[..., TestClie
             principal = Principal(subject="tester", roles=frozenset(roles))
             app.dependency_overrides[get_principal] = lambda: principal
         chosen: DeviceConnector = connector or FakeConnector()
+        git_store = GitStore(str(tmp_path / "repo"))
+        cidrs = get_settings().allowed_scan_cidrs
         app.dependency_overrides[get_connector] = lambda: chosen
-        app.dependency_overrides[get_git_store] = lambda: GitStore(str(tmp_path / "repo"))
+        app.dependency_overrides[get_git_store] = lambda: git_store
+
+        def _dispatch(job_id: UUID) -> None:
+            # En tests el job corre síncrono (las BackgroundTasks del TestClient se ejecutan tras la
+            # respuesta) con los dobles inyectados, en su propia sesión.
+            with Session(pg_engine) as job_session:
+                run_job(job_session, job_id, chosen, git_store, cidrs)
+
+        app.dependency_overrides[get_job_dispatcher] = lambda: _dispatch
         return TestClient(app)
 
     return _make
