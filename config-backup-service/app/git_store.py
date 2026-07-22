@@ -40,3 +40,7 @@ class GitStore:
         """Diferencia unificada de un fichero de config entre dos commits."""
         relative = f"{device_id}/{config_type}.cfg"
         return str(self._repo.git.diff(from_ref, to_ref, "--", relative))
+
+    def read_config(self, device_id: str, ref: str, config_type: str = "running") -> str:
+        """Contenido de un fichero de config en un commit dado (para comparar con lo vivo)."""
+        return str(self._repo.git.show(f"{ref}:{device_id}/{config_type}.cfg"))
