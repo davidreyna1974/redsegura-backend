@@ -3,10 +3,24 @@ routers implementan el ``openapi.yaml``; FastAPI sirve la doc navegable en runti
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from app.api import backups, drift, health
+from app.config import get_settings
+from app.db.session import get_engine
 from app.errors import register_error_handlers
+from app.messaging.runner import start_background
+
+
+@asynccontextmanager
+async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
+    settings = get_settings()
+    if settings.messaging_enabled:  # pragma: no cover
+        start_background(settings, get_engine())
+    yield
 
 
 def create_app() -> FastAPI:
@@ -14,6 +28,7 @@ def create_app() -> FastAPI:
         title="config-backup-service API",
         version="0.1.0",
         description="Respaldo y versionado de configuraciones de red (RF-06..10).",
+        lifespan=_lifespan,
     )
     register_error_handlers(app)
     app.include_router(health.router, prefix="/api/v1")

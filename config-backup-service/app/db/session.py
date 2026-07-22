@@ -13,10 +13,10 @@ from app.db.base import make_engine
 
 
 @lru_cache(maxsize=1)
-def _engine() -> Engine:
+def get_engine() -> Engine:
     return make_engine(get_settings().db_url)
 
 
 def get_session() -> Iterator[Session]:
-    with Session(_engine()) as session:
+    with Session(get_engine()) as session:
         yield session

@@ -31,7 +31,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-18 cobertura ≥ 70 % | 🟡 | `pytest --cov` en el gate | CI | DEV |
 | RNF-19 gatekeeper en CI | 🟡 | ruff + mypy + pytest (activar workflow) | CI | DEV |
 | RNF-20 documentación pre-código | ✅ | propuesta/casos/memoria/matriz (este paquete) | `documentos/` | — |
-| **RNF-21 Pact** | 🟢 | **Consumidor de `asset.*` verificado (INT-CONS)** contra el esquema compartido; par con `asset-inventory` cerrado. Falta el wiring del broker (pika) → núcleo | `test_asset_event_contract` (PACT-01) | **INT-CONS activado** |
+| **RNF-21 Pact** | 🟢 | **Consumidor de `asset.*` verificado (INT-CONS)** contra el esquema compartido + **consumo real** desde RabbitMQ | `test_asset_event_contract` (PACT-01), `test_broker` | **INT-CONS cerrado** |
 | RNF-22 paridad Compose ↔ k8s | 🔵 | 12-factor | — | **DEPLOY** |
 | RNF-23 IaC (Terraform) | 🔵 | — | — | **DEPLOY** |
 | RNF-24 presupuesto AWS | ⬜ | — | — | Nivel infra |
@@ -39,7 +39,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-27 OpenAPI + Swagger runtime | 🟢 | FastAPI sirve `/docs` + `/openapi.json` en runtime | (nativo FastAPI) | verificar divergencia contra `openapi.yaml` |
 | RNF-28 SemVer + CHANGELOG | 🟡 | Tag `config-backup-service-vX`; CHANGELOG | `CHANGELOG.md` | DEV |
 | RNF-29 token issuer/audience | 🟢 | `jwt.decode` con `issuer`+`audience`+exp (PyJWKClient) | `security.py`, `test_security` | DEV |
-| RNF-30 entrega de eventos (produce) | 🟡 | Outbox **write** hecho (`config.backup_completed/failed`, `unsaved_changes_detected`); falta el **relay** (confirms + `SKIP LOCKED`) con el wiring del broker | `messaging/outbox.py`, `test_backup_service` (EVT-OUT-*) | DEV (relay pendiente) |
+| RNF-30 entrega de eventos (produce) | 🟢 | Outbox + **relay** con `SKIP LOCKED` + publisher confirms + DLQ, sobre RabbitMQ real | `messaging/relay.py`, `test_broker` | DEV |
 | RNF-31 readiness (esta matriz) | 🟡 | Matriz + checklist mantenidas | este archivo | DEV |
 
 ## Diferencias notables vs `asset-inventory-service`
