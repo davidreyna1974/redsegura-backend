@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.db.session import get_engine
 from app.errors import register_error_handlers
 from app.messaging.runner import start_background
+from app.observability import configure_observability
 
 
 @asynccontextmanager
@@ -31,6 +32,7 @@ def create_app() -> FastAPI:
         lifespan=_lifespan,
     )
     register_error_handlers(app)
+    configure_observability(app, get_settings())
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(backups.router, prefix="/api/v1")
     app.include_router(drift.router, prefix="/api/v1")

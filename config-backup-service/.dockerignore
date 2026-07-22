@@ -1,0 +1,13 @@
+# Contexto de build = raíz del repo; solo se copia lo necesario del servicio. Aun así excluimos
+# artefactos pesados/locales para acelerar el build y evitar filtrar entornos.
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/.coverage
+**/htmlcov
+**/tests
+**/documentos
+**/postman

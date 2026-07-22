@@ -18,6 +18,7 @@ from app.connectors.scope import assert_in_scope
 from app.db.models import Backup, Device
 from app.git_store import GitStore
 from app.messaging.outbox import OutboxWriter
+from app.observability import DRIFT_CHECKS_TOTAL
 from app.services.backup import DeviceNotFoundError, NoManagementAddressError
 
 
@@ -67,6 +68,7 @@ def drift_check_device(
     baseline = _last_successful_backup(session, device_id)
     if baseline is None or baseline.commit is None:
         # Sin línea base no hay con qué comparar → no se declara drift.
+        DRIFT_CHECKS_TOTAL.labels("no_baseline").inc()
         return DriftResult(device_id, drift=False, drift_ref=None, checked_at=checked_at)
 
     live = with_retries(
@@ -85,6 +87,7 @@ def drift_check_device(
             },
         )
         session.commit()
+    DRIFT_CHECKS_TOTAL.labels("drift" if drift else "no_drift").inc()
     return DriftResult(
         device_id, drift=drift, drift_ref=baseline.commit if drift else None, checked_at=checked_at
     )

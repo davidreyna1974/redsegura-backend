@@ -18,18 +18,18 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-05 TLS + segmentación | 🔵 | — | — | **DEPLOY** |
 | RNF-06 secretos externalizados | 🟢 | **Credenciales SSH** por env (`CBS_SSH_*`), nunca en código/BD | `config.py` | gestor de secretos en **DEPLOY** |
 | **RNF-07 alcance de conexión** | 🟢 | **Control técnico de CIDRs autorizados**: `assert_in_scope` rechaza fuera de alcance **antes** de conectar | `connectors/scope.py`, `test_scope_resilience`, `test_backup_service`, `test_backups_api` (RNF07-01: POST fuera de alcance → 422) | — |
-| RNF-08 SCA + imagen (CI) | 🟡 | `pip-audit` + Trivy imagen, bloqueante en crítico | workflow | DEV |
+| RNF-08 SCA + imagen (CI) | 🟢 | `pip-audit` (informativo) + **Trivy imagen bloqueante en CRÍTICO** sobre la imagen real construida en CI | `.github/workflows/ci-config-backup-service.yml`, `Dockerfile` | — |
 | RNF-09 sin fuga de internos | 🟢 | Handlers RFC 7807 (`errors.py`) → `application/problem+json` | `test_errors`, `test_backups_api` | DEV |
 | **RNF-10 Resilience (timeout/retry)** | 🟢 | **Reintentos con backoff** en las llamadas SSH (`with_retries`); timeout va en el conector Netmiko | `connectors/resilience.py`, `test_scope_resilience` (RES-02) | timeout Netmiko al añadir el conector real |
-| RNF-11 degradación con gracia | 🟡 | Fallo de un dispositivo no tumba el lote | FLOW-02 | DEV |
-| RNF-12 health probes | 🟡 | liveness/readiness (BD/broker/Git) | HLTH-01..03 | DEV |
-| RNF-13 stateless + HPA | 🟢/🔵 | App stateless (estado en BD/Git/broker); graceful shutdown | — | HPA en **DEPLOY** |
-| RNF-14 database-per-service | 🟢 | BD propia (Postgres) + **Alembic** (vista de dispositivos, processed_events); repo Git al implementar núcleo | `alembic/`, `RetentionCleanupIT`→N/A; `test_asset_event_handler` (Testcontainers) | DEV |
-| RNF-15 métricas Prometheus + dominio | 🟡 | `prometheus-fastapi-instrumentator` + contadores (respaldos, drift) | ObservabilityIT | DEV; dashboards **DEPLOY** |
-| RNF-16 trazas distribuidas | 🟡 | OpenTelemetry FastAPI; traceId en logs | — | export por entorno **DEPLOY** |
-| RNF-17 logs sin PII/secretos | 🟡 | Logs JSON; **credenciales SSH redactadas** | CYBER-01 | DEV |
-| RNF-18 cobertura ≥ 70 % | 🟡 | `pytest --cov` en el gate | CI | DEV |
-| RNF-19 gatekeeper en CI | 🟡 | ruff + mypy + pytest (activar workflow) | CI | DEV |
+| RNF-11 degradación con gracia | 🟢 | Fallo de un dispositivo no tumba el lote (job sigue); **graceful shutdown** de uvicorn | FLOW-02 (`test_jobs`) | DEV |
+| RNF-12 health probes | 🟢 | liveness/readiness (BD/broker/Git); **HEALTHCHECK** en la imagen | HLTH-01..03 (`test_health`) | DEV |
+| RNF-13 stateless + HPA | 🟢/🔵 | App stateless (estado en BD/Git/broker); **graceful shutdown** (`--timeout-graceful-shutdown`); **usuario no-root** en la imagen | `Dockerfile`, `docker-entrypoint.sh` | HPA en **DEPLOY** |
+| RNF-14 database-per-service | 🟢 | BD propia (Postgres) + **Alembic**; **retención** de datos operativos (purga jobs/eventos antiguos, conserva respaldos) | `alembic/`, `services/retention.py`, `test_retention` | DEV |
+| RNF-15 métricas Prometheus + dominio | 🟢 | Endpoint `/metrics`; HTTP (peticiones+latencia) + **dominio** (respaldos, drift, eventos publicados, jobs) | `observability.py`, `test_observability` (OBS-01/02) | dashboards **DEPLOY** |
+| RNF-16 trazas distribuidas | 🟢 | Instrumentación OpenTelemetry FastAPI; `traceId`/`spanId` en logs JSON | `observability.py` | export OTLP por entorno **DEPLOY** |
+| RNF-17 logs sin PII/secretos | 🟢 | Logs **JSON**; **contraseña SSH redactada** por filtro (aunque se filtre por error) | `observability.py`, `test_observability` (OBS-03/CYBER-01) | DEV |
+| RNF-18 cobertura ≥ 70 % | 🟢 | `pytest --cov --cov-fail-under=70` en el gate (cobertura real ~95 %) | CI | DEV |
+| RNF-19 gatekeeper en CI | 🟢 | ruff + mypy(strict) + pytest + pip-audit + Trivy, **activo y verde** | `.github/workflows/ci-config-backup-service.yml` | DEV |
 | RNF-20 documentación pre-código | ✅ | propuesta/casos/memoria/matriz (este paquete) | `documentos/` | — |
 | **RNF-21 Pact** | 🟢 | **Consumidor de `asset.*` verificado (INT-CONS)** contra el esquema compartido + **consumo real** desde RabbitMQ | `test_asset_event_contract` (PACT-01), `test_broker` | **INT-CONS cerrado** |
 | RNF-22 paridad Compose ↔ k8s | 🔵 | 12-factor | — | **DEPLOY** |

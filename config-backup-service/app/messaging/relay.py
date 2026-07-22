@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import OutboxEvent
 from app.messaging.topology import EXCHANGE
+from app.observability import EVENTS_PUBLISHED_TOTAL
 
 
 def publish_pending(session: Session, channel: Any, batch_size: int = 100) -> int:
@@ -40,5 +41,6 @@ def publish_pending(session: Session, channel: Any, batch_size: int = 100) -> in
             properties=properties,
         )
         event.published_at = datetime.now(UTC)
+        EVENTS_PUBLISHED_TOTAL.labels(event.event_type).inc()
     session.commit()
     return len(pending)

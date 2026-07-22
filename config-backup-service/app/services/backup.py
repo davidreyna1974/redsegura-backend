@@ -16,6 +16,7 @@ from app.connectors.scope import assert_in_scope
 from app.db.models import Backup, Device
 from app.git_store import GitStore
 from app.messaging.outbox import OutboxWriter
+from app.observability import BACKUPS_TOTAL
 
 
 class DeviceNotFoundError(Exception):
@@ -69,6 +70,7 @@ def backup_device(
             {"deviceId": str(device_id), "failureReason": str(error)},
         )
         session.commit()
+        BACKUPS_TOTAL.labels("FAILED").inc()
         return backup
 
     unsaved = config.running.strip() != config.startup.strip()
@@ -101,4 +103,5 @@ def backup_device(
             {"deviceId": str(device_id), "backupId": str(backup_id)},
         )
     session.commit()
+    BACKUPS_TOTAL.labels("SUCCESS").inc()
     return backup
