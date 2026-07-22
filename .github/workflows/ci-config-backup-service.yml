@@ -49,3 +49,22 @@ jobs:
 
       - name: Tests + cobertura (>= 70%)
         run: pytest tests --cov=app --cov-fail-under=70
+
+      # Cadena de suministro (RNF-08/ADR-16). pip-audit informa advisories de las dependencias
+      # Python (no bloqueante: cubre no-críticos); el bloqueo en CRÍTICO lo hace Trivy sobre la imagen.
+      - name: SCA de dependencias Python (pip-audit — informativo)
+        continue-on-error: true
+        run: pip-audit --requirement requirements.txt --desc
+
+      - name: Instalar Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+            | sh -s -- -b /usr/local/bin
+
+      # La imagen incluye el venv con las deps de runtime + el SO base → Trivy cubre SCA + imagen.
+      - name: Construir imagen del servicio
+        working-directory: ${{ github.workspace }}
+        run: docker build -f config-backup-service/Dockerfile -t config-backup-service:ci .
+
+      - name: Escaneo de cadena de suministro (Trivy image — deps + imagen, bloqueante en CRÍTICO)
+        run: trivy image --scanners vuln --severity CRITICAL --exit-code 1 --ignore-unfixed config-backup-service:ci

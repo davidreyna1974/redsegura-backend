@@ -70,6 +70,16 @@ def schedule_forever(settings: Settings, engine: Engine) -> None:  # pragma: no 
         time.sleep(settings.scheduler_interval_s)
 
 
+def retention_forever(settings: Settings, engine: Engine) -> None:  # pragma: no cover
+    """Bucle de retención: purga periódica de datos operativos antiguos."""
+    from app.services.retention import purge_old
+
+    while True:
+        with Session(engine) as session:
+            purge_old(session, datetime.now(UTC), settings.retention_days)
+        time.sleep(settings.retention_interval_s)
+
+
 def start_background(settings: Settings, engine: Engine) -> None:  # pragma: no cover
     threading.Thread(
         target=consume_forever, args=(settings.rabbitmq_url, engine), daemon=True
@@ -80,3 +90,4 @@ def start_background(settings: Settings, engine: Engine) -> None:  # pragma: no 
         daemon=True,
     ).start()
     threading.Thread(target=schedule_forever, args=(settings, engine), daemon=True).start()
+    threading.Thread(target=retention_forever, args=(settings, engine), daemon=True).start()

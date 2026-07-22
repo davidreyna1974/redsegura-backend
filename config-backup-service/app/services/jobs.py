@@ -15,6 +15,7 @@ from app.connectors.base import DeviceConnector
 from app.connectors.scope import OutOfScopeError
 from app.db.models import Device, Job, JobResult
 from app.git_store import GitStore
+from app.observability import JOBS_TOTAL
 from app.schemas import BatchTarget, JobOut, JobResultOut
 from app.services.backup import (
     DeviceNotFoundError,
@@ -133,6 +134,7 @@ def run_job(
     job.status = "COMPLETED"
     session.commit()
     session.refresh(job)
+    JOBS_TOTAL.labels(job.type, job.status).inc()
     return job
 
 

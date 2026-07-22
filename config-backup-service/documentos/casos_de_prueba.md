@@ -30,7 +30,7 @@
 | RN-CB3 | (servicio) | RN | Respaldo exitoso crea **1 commit** en Git interno | — | Metadato `commit`; versionado (`test_backup_service`/`test_git_store`) | ✅ |
 | RN-CB4 | (servicio) | RN | Fallo de conexión SSH (RF-10) | — | `status:FAILED` + `failureReason`; emite `config.backup_failed` | ✅ |
 | RN-CB7 | POST backups | RN | Idempotencia: misma clave + mismo cuerpo | ADM | 2.ª = 1.ª, sin duplicar | ⏳ |
-| CYBER-01 | POST backups | CYBER | Credenciales SSH **no** aparecen en respuesta/logs | ADM | Sin secretos filtrados (RNF-17) | ⏳ |
+| CYBER-01 | logs | CYBER | Credenciales SSH **no** aparecen en logs | — | Contraseña SSH redactada a `***` por el formateador JSON (RNF-17) (`test_observability`) | ✅ |
 | **RNF07-01** | (servicio) | SEC/CYBER | Objetivo **fuera de los CIDRs autorizados** (RNF-07) | — | rechazado; **no** intenta conectar (`test_backup_service`) | ✅ |
 
 ## Respaldo por lotes — `POST /backups` (asíncrono)
@@ -98,6 +98,15 @@
 |---|---|---|---|---|
 | RES-01 | RN/ERR | Timeout de conexión SSH | falla acotada (timeout) + `FAILED`, no cuelga | ⏳ |
 | RES-02 | RN | Reintento con backoff ante fallo transitorio | reintenta y luego SUCCESS (`test_scope_resilience`) | ✅ |
+
+## Observabilidad y endurecimiento (RNF-13/15/16/17)
+| ID | Cat. | Descripción | Esperado | Estado |
+|---|---|---|---|---|
+| OBS-01 | RNF | Endpoint `/metrics` abierto en formato Prometheus | 200; expone `http_requests_total` (`test_observability`) | ✅ |
+| OBS-02 | RNF | Métrica de dominio incrementa | Tras respaldo, `config_backups_total{status="SUCCESS"}` (`test_observability`) | ✅ |
+| OBS-03 | RNF/CYBER | Logs JSON estructurados + redacción de secreto | Campos timestamp/level/service/message; secreto → `***` (`test_observability`) | ✅ |
+| HARD-01 | RNF | Imagen corre como **no-root** + liveness/HEALTHCHECK | Contenedor `appuser`; liveness 200 (verificación en vivo) | ✅ |
+| RET-01 | RNF | Retención purga datos operativos, conserva respaldos | Purga jobs/eventos antiguos; `backups` intactos (`test_retention`) | ✅ |
 
 ## Categorías N/A
 `UI`, `VIS` → repo `frontend`.

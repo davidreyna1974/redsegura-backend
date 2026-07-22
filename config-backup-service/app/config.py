@@ -39,6 +39,18 @@ class Settings(BaseSettings):
     # Lista separada por comas (p. ej. "10.0.0.0/8,192.168.0.0/16").
     allowed_scan_cidrs: str = "10.0.0.0/8,192.168.0.0/16"
 
+    # Observabilidad (RNF-15/16/17)
+    log_level: str = "INFO"
+    service_name: str = "config-backup-service"
+    # Endpoint OTLP/HTTP para exportar trazas (vacío = instrumentado pero sin exportar; el
+    # exportador por entorno se activa en DEPLOY). P. ej. "http://otel-collector:4318/v1/traces".
+    otel_exporter_otlp_endpoint: str = ""
+
+    # Retención de datos operativos (RNF): purga de filas antiguas (jobs, resultados, eventos
+    # procesados, outbox publicado). Días a conservar; el barrido corre en segundo plano.
+    retention_days: int = 90
+    retention_interval_s: float = 3600.0
+
 
 def get_settings() -> Settings:
     """Punto único de acceso a la configuración (inyectable/overridable en tests)."""
