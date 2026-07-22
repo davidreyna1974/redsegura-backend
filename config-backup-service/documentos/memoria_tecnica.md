@@ -54,7 +54,7 @@ _(bitácora por fase — se llena al avanzar.)_
 |---|---|---|
 | Scaffold + gatekeeper | ✅ | FastAPI + health + errores RFC 7807 + config; ruff/mypy(strict)/pytest verdes, cobertura 100%; CI activo (path-triggered) |
 | Persistencia + consumo asset.* + Pact | ✅ | SQLAlchemy 2.0 + Alembic (vista de dispositivos + processed_events); consumidor idempotente de `asset.*`; **Pact consumidor** verificado (INT-CONS). Tests con Testcontainers Postgres + Alembic real (14 tests, cobertura 98%). **Pendiente (núcleo):** wiring del broker (pika) que entrega los mensajes al handler. |
-| Núcleo (backup/git/diff/drift/schedules/jobs) | 🟡 | **Respaldo individual** hecho: conector abstracto + doble (RNF-07 alcance + RNF-10 reintentos), versionado Git + diff, `unsavedChanges` (ADR-02), persistencia `Backup`, producción `config.*` vía outbox. 25 tests, cobertura 98%. **Pendiente:** endpoints HTTP + RBAC, drift-check, schedules (cron), jobs por lotes, conector Netmiko real, relay del outbox + consumidor pika. |
+| Núcleo (backup/git/diff/drift/schedules/jobs) | 🟡 | **Respaldo individual** hecho: conector abstracto + doble (RNF-07 alcance + RNF-10 reintentos), versionado Git + diff, `unsavedChanges` (ADR-02), persistencia `Backup`, producción `config.*` vía outbox. 25 tests, cobertura 98%. endpoints HTTP + RBAC + conector Netmiko real ✅; **drift-check (RF-09) ✅**. **Pendiente:** schedules (cron), jobs por lotes, relay del outbox + consumidor pika. |
 | Seguridad + observabilidad + endurecimiento | 🟡 | **JWT (iss/aud) + RBAC por endpoint** hechos (`security.py`); RFC 7807; API de respaldo (POST/GET/diff). Pendiente: observabilidad, endurecimiento (non-root/graceful/retención/métricas/SCA). |
 | QA 4 fases + verificación en vivo + CI | ⏳ | |
 

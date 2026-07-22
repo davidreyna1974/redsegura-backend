@@ -59,9 +59,9 @@
 ## Drift-check — `POST /devices/{id}/drift-check`, `POST /drift-checks`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
 |---|---|---|---|---|---|---|
-| RN-CB5 | POST drift-check | RN | running en vivo ≠ último respaldo (RF-09) | ADM/OPE | 200 `drift:true`; emite `config.drift_detected` | ⏳ |
-| DRIFT-02 | POST drift-check | FLOW | Sin cambios | ADM | 200 `drift:false`; **sin** evento | ⏳ |
-| SEC-03 | POST drift-check | SEC | Rol sin permiso | AUD | **403** | ⏳ |
+| RN-CB5 | POST drift-check | RN | running en vivo ≠ último respaldo (RF-09) | ADM/OPE | 200 `drift:true`; emite `config.drift_detected` (`test_drift`) | ✅ |
+| DRIFT-02 | POST drift-check | FLOW | Sin cambios | ADM | 200 `drift:false`; **sin** evento (`test_drift`) | ✅ |
+| SEC-03 | POST drift-check | SEC | Rol sin permiso | AUD | **403** (`test_drift`) | ✅ |
 | FLOW-03 | POST /drift-checks | FLOW | Drift-check por lotes | ADM/OPE | 202 + `jobId` | ⏳ |
 
 ## Programaciones — `POST/GET /schedules`
@@ -87,7 +87,7 @@
 |---|---|---|---|---|
 | EVT-OUT-01 | EVT | `config.backup_completed` tras éxito | evento en outbox (`test_backup_service`) | ✅ |
 | EVT-OUT-02 | EVT | `config.backup_failed` tras fallo | evento con `failureReason` | ✅ |
-| EVT-OUT-03 | EVT | `config.drift_detected` tras drift | evento con `driftRef` | ⏳ |
+| EVT-OUT-03 | EVT | `config.drift_detected` tras drift | evento con `driftRef` (`test_drift`) | ✅ |
 | EVT-OUT-04 | EVT | Operación fallida **no** emite evento de éxito | solo `config.backup_failed` (RNF-E4) | ✅ |
 
 ## Resiliencia SSH (RNF-10 — aplica desde DEV)
