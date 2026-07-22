@@ -61,5 +61,12 @@ _(bitácora por fase — se llena al avanzar.)_
 ## 6. Deuda / diferidos
 Rastreados en [`matriz_rnf.md`](matriz_rnf.md) y `preparacion_produccion.md` (DEPLOY/PRE-REL).
 
+> **Fidelidad de integración con dispositivos (deuda PRE-REL, `preparacion_produccion.md §2.9`):** los
+> tests mockean el dispositivo (estándar correcto, herméticos). Antes de producción se cierra el hueco
+> de fidelidad con: (1) **fixtures de output real grabado** por plataforma, (2) **matriz de
+> compatibilidad** (vendor×modelo×OS) validada en emulador con **imágenes reales** (GNS3/Containerlab/CML,
+> **no** Packet Tracer, que es simulador de baja fidelidad para automatización), y (3) **smoke
+> pre-producción** contra dispositivos reales/representativos. No bloquean DEV.
+
 ## 7. Cumplimiento ("done")
 _(se marca al certificar; ver la Definición de done D1..D6 del `CLAUDE.md`.)_
