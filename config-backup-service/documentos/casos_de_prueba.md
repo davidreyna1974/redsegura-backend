@@ -36,9 +36,11 @@
 ## Respaldo por lotes — `POST /backups` (asíncrono)
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
 |---|---|---|---|---|---|---|
-| FLOW-01 | POST /backups | FLOW | Lote encolado | ADM/OPE | 202 + `jobId` (QUEUED) | ⏳ |
-| FLOW-02 | GET jobs/{id} | FLOW | Seguimiento hasta COMPLETED | ADM/OPE/AUD | estado con `completed`/`failed` por dispositivo | ⏳ |
-| VAL-01 | POST /backups | VAL | `BatchTargetRequest` con 0 o >1 de scope/deviceIds/filter | ADM | **400/422** (exactamente uno, RN-CB8) | ⏳ |
+| FLOW-01 | POST /backups | FLOW | Lote encolado | ADM/OPE | 202 + `jobId` (QUEUED) (`test_jobs`) | ✅ |
+| FLOW-02 | GET jobs/{id} | FLOW | Seguimiento hasta COMPLETED | ADM/OPE/AUD | estado con `completed`/`failed` por dispositivo; mixto ok/fuera-de-alcance/inexistente (`test_jobs`) | ✅ |
+| SEC-05 | POST /backups | SEC | Lote con rol de solo lectura | AUD | **403** (`test_jobs`) | ✅ |
+| VAL-01 | POST /backups | VAL | `BatchTargetRequest` con 0 o >1 de scope/deviceIds/filter | ADM | **422** (exactamente uno, RN-CB8) (`test_jobs`) | ✅ |
+| ERR-03 | GET jobs/{id} | ERR | jobId inexistente **o** de otro tipo en la ruta | ADM/OPE/AUD | **404** (aislamiento de tipo) (`test_jobs`) | ✅ |
 
 ## Historial y detalle — `GET /backups`, `GET /backups/{id}`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
@@ -62,16 +64,17 @@
 | RN-CB5 | POST drift-check | RN | running en vivo ≠ último respaldo (RF-09) | ADM/OPE | 200 `drift:true`; emite `config.drift_detected` (`test_drift`) | ✅ |
 | DRIFT-02 | POST drift-check | FLOW | Sin cambios | ADM | 200 `drift:false`; **sin** evento (`test_drift`) | ✅ |
 | SEC-03 | POST drift-check | SEC | Rol sin permiso | AUD | **403** (`test_drift`) | ✅ |
-| FLOW-03 | POST /drift-checks | FLOW | Drift-check por lotes | ADM/OPE | 202 + `jobId` | ⏳ |
+| FLOW-03 | POST /drift-checks | FLOW | Drift-check por lotes | ADM/OPE | 202 + `jobId`; seguimiento a COMPLETED (`test_jobs`) | ✅ |
 
 ## Programaciones — `POST/GET /schedules`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
 |---|---|---|---|---|---|---|
-| CRUD-05 | POST /schedules | CRUD | Crear schedule (cron válido) | ADM | 201 `Schedule` | ⏳ |
-| SEC-04 | POST /schedules | SEC | Crear con OPE/AUD | OPE, AUD | **403** (solo ADM) | ⏳ |
-| VAL-03 | POST /schedules | VAL | `cron` inválido / `type` fuera de enum | ADM | **400/422** | ⏳ |
-| FLOW-04 | (scheduler) | FLOW | El schedule dispara el backup/drift a su hora | — | Ejecución registrada; `createdBy:scheduler` | ⏳ |
-| CRUD-06 | GET /schedules | CRUD | Listar con filtros | ADM/OPE/AUD | 200 página | ⏳ |
+| CRUD-05 | POST /schedules | CRUD | Crear schedule (cron válido) | ADM | 201 `Schedule` (`next_run_at` calculado) (`test_schedules`) | ✅ |
+| SEC-04 | POST /schedules | SEC | Crear con OPE/AUD | OPE, AUD | **403** (solo ADM) (`test_schedules`) | ✅ |
+| VAL-03 | POST /schedules | VAL | `cron` inválido / `type` fuera de enum | ADM | **400/422** (`test_schedules`) | ✅ |
+| FLOW-04 | (scheduler) | FLOW | El schedule vencido dispara el backup/drift | — | Job COMPLETED; `createdBy:scheduler:<id>`; `next_run_at` avanza (`test_schedules`) | ✅ |
+| RN-CB9 | due_schedules | RN | Solo dispara programaciones **activas y vencidas** (no futuras ni pausadas) | — | selección correcta (`test_schedules`) | ✅ |
+| CRUD-06 | GET /schedules | CRUD | Listar con filtros | ADM/OPE/AUD | 200 página (`test_schedules`) | ✅ |
 
 ## Consumo de eventos `asset.*` (vista de dispositivos) + Pact
 | ID | Cat. | Descripción | Esperado | Estado |

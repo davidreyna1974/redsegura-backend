@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import backups, drift, health
+from app.api import backups, drift, health, schedules
 from app.config import get_settings
 from app.db.session import get_engine
 from app.errors import register_error_handlers
@@ -34,6 +34,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(backups.router, prefix="/api/v1")
     app.include_router(drift.router, prefix="/api/v1")
+    app.include_router(schedules.router, prefix="/api/v1")
     return app
 
 

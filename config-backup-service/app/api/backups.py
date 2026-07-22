@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Annotated, Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -14,14 +15,21 @@ from app.connectors.base import DeviceConnector
 from app.connectors.scope import OutOfScopeError
 from app.db.models import Backup
 from app.db.session import get_session
-from app.deps import get_connector, get_git_store
+from app.deps import get_connector, get_git_store, get_job_dispatcher
 from app.git_store import GitStore
-from app.schemas import BackupOut, ConfigType, PageBackup
+from app.schemas import BackupOut, BatchTarget, ConfigType, JobOut, PageBackup
 from app.security import Principal, require_roles
 from app.services.backup import (
     DeviceNotFoundError,
     NoManagementAddressError,
     backup_device,
+)
+from app.services.jobs import (
+    JobNotFoundError,
+    create_job,
+    load_job,
+    resolve_targets,
+    to_job_out,
 )
 
 router = APIRouter(tags=["backups"])
@@ -59,6 +67,29 @@ def create_backup(
         ) from error
     except OutOfScopeError as error:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error)) from error
+
+
+@router.post("/backups", status_code=status.HTTP_202_ACCEPTED, response_model=JobOut)
+def backup_batch(
+    target: BatchTarget,
+    principal: WriteRoles,
+    session: Db,
+    background: BackgroundTasks,
+    dispatcher: Annotated[Callable[[UUID], None], Depends(get_job_dispatcher)],
+) -> JobOut:
+    device_ids = resolve_targets(session, target)
+    job = create_job(session, "backup", device_ids, principal.subject)
+    background.add_task(dispatcher, job.job_id)
+    return to_job_out(job, [])
+
+
+@router.get("/backups/jobs/{job_id}", response_model=JobOut)
+def get_backup_job(job_id: UUID, principal: ReadRoles, session: Db) -> JobOut:
+    try:
+        job, results = load_job(session, job_id, "backup")
+    except JobNotFoundError as error:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job no encontrado") from error
+    return to_job_out(job, results)
 
 
 @router.get("/backups", response_model=PageBackup)
