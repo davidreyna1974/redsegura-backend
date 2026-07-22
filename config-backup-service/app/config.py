@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     db_url: str = "postgresql+psycopg://cbs:changeme@localhost:5432/config_backup"
     rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
 
+    # Arranca el consumidor de asset.* y el relay del outbox (requiere broker; desactivado por
+    # defecto para que la app y los tests arranquen sin RabbitMQ). Se activa en el entorno real.
+    messaging_enabled: bool = False
+    outbox_relay_interval_s: float = 2.0
+
     # Seguridad (JWT de Keycloak) — validación issuer/audience (RNF-29)
     keycloak_jwks_uri: str = "http://localhost:8080/realms/redsegura/protocol/openid-connect/certs"
     keycloak_issuer: str = "http://localhost:8080/realms/redsegura"
