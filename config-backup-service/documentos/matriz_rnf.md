@@ -20,7 +20,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | **RNF-07 alcance de conexión** | 🟢 | **Control técnico de CIDRs autorizados**: `assert_in_scope` rechaza fuera de alcance **antes** de conectar | `connectors/scope.py`, `test_scope_resilience`, `test_backup_service`, `test_backups_api` (RNF07-01: POST fuera de alcance → 422) | — |
 | RNF-08 SCA + imagen (CI) | 🟢 | `pip-audit` (informativo) + **Trivy imagen bloqueante en CRÍTICO** sobre la imagen real construida en CI | `.github/workflows/ci-config-backup-service.yml`, `Dockerfile` | — |
 | RNF-09 sin fuga de internos | 🟢 | Handlers RFC 7807 (`errors.py`) → `application/problem+json` | `test_errors`, `test_backups_api` | DEV |
-| **RNF-10 Resilience (timeout/retry)** | 🟢 | **Reintentos con backoff** en las llamadas SSH (`with_retries`); timeout va en el conector Netmiko | `connectors/resilience.py`, `test_scope_resilience` (RES-02) | timeout Netmiko al añadir el conector real |
+| **RNF-10 Resilience (timeout/retry)** | 🟢 | **Reintentos con backoff** en SSH (`with_retries`); **reconexión con backoff de los hilos de fondo** (`run_resilient`: consumidor/relay/scheduler/retención sobreviven a caídas del broker/BD — HALLAZGO-LIVE-CBS-01) | `connectors/resilience.py` (RES-02), `messaging/runner.py`, `test_runner` (RUN-01..05) | timeout Netmiko al añadir el conector real |
 | RNF-11 degradación con gracia | 🟢 | Fallo de un dispositivo no tumba el lote (job sigue); **graceful shutdown** de uvicorn | FLOW-02 (`test_jobs`) | DEV |
 | RNF-12 health probes | 🟢 | liveness/readiness (BD/broker/Git); **HEALTHCHECK** en la imagen | HLTH-01..03 (`test_health`) | DEV |
 | RNF-13 stateless + HPA | 🟢/🔵 | App stateless (estado en BD/Git/broker); **graceful shutdown** (`--timeout-graceful-shutdown`); **usuario no-root** en la imagen | `Dockerfile`, `docker-entrypoint.sh` | HPA en **DEPLOY** |
@@ -39,7 +39,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-27 OpenAPI + Swagger runtime | 🟢 | FastAPI sirve `/docs` + `/openapi.json` en runtime | (nativo FastAPI) | verificar divergencia contra `openapi.yaml` |
 | RNF-28 SemVer + CHANGELOG | 🟡 | Tag `config-backup-service-vX`; CHANGELOG | `CHANGELOG.md` | DEV |
 | RNF-29 token issuer/audience | 🟢 | `jwt.decode` con `issuer`+`audience`+exp (PyJWKClient) | `security.py`, `test_security` | DEV |
-| RNF-30 entrega de eventos (produce) | 🟢 | Outbox + **relay** con `SKIP LOCKED` + publisher confirms + DLQ, sobre RabbitMQ real | `messaging/relay.py`, `test_broker` | DEV |
+| RNF-30 entrega de eventos (produce) | 🟢 | Outbox + **relay** con `SKIP LOCKED` + publisher confirms + DLQ; **relay auto-recuperable** ante caída del broker (reconecta y drena el outbox; verificado en vivo reiniciando RabbitMQ) | `messaging/relay.py`, `messaging/runner.py`, `test_broker`, `test_runner` | DEV |
 | RNF-31 readiness (esta matriz) | 🟡 | Matriz + checklist mantenidas | este archivo | DEV |
 
 ## Diferencias notables vs `asset-inventory-service`

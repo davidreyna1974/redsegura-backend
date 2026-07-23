@@ -98,6 +98,11 @@
 |---|---|---|---|---|
 | RES-01 | RN/ERR | Timeout de conexión SSH | falla acotada (timeout) + `FAILED`, no cuelga | ⏳ |
 | RES-02 | RN | Reintento con backoff ante fallo transitorio | reintenta y luego SUCCESS (`test_scope_resilience`) | ✅ |
+| RUN-01 | RN | Hilo de fondo reconecta tras caída recuperable (backoff exponencial) | reejecuta; sleeps 1,2,… (`test_runner`) | ✅ |
+| RUN-02 | RN | Backoff tope en `max_backoff` | no crece indefinido (`test_runner`) | ✅ |
+| RUN-03 | ERR | Error **no** recuperable se propaga (no se traga bugs) | excepción propagada (`test_runner`) | ✅ |
+| RUN-04/05 | RN | Parada limpia + set de errores recuperables (broker/BD/OS) | (`test_runner`) | ✅ |
+| RNF30-LIVE | CYBER/RN | **Relay sobrevive a reinicio de RabbitMQ** y drena el outbox (HALLAZGO-LIVE-CBS-01) | verificado en vivo: outbox→0, `Exception in thread`=0 | ✅ |
 
 ## Observabilidad y endurecimiento (RNF-13/15/16/17)
 | ID | Cat. | Descripción | Esperado | Estado |
