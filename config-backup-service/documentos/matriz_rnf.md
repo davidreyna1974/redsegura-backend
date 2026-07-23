@@ -37,10 +37,10 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-24 presupuesto AWS | ⬜ | — | — | Nivel infra |
 | RNF-25/26 accesibilidad/UX | ⬜ | — | — | Repo `frontend` |
 | RNF-27 OpenAPI + Swagger runtime | 🟢 | FastAPI sirve `/docs` + `/openapi.json` en runtime | (nativo FastAPI) | verificar divergencia contra `openapi.yaml` |
-| RNF-28 SemVer + CHANGELOG | 🟡 | Tag `config-backup-service-vX`; CHANGELOG | `CHANGELOG.md` | DEV |
+| RNF-28 SemVer + CHANGELOG | 🟢 | Entrada del servicio en `CHANGELOG.md`; tag `config-backup-service-vX` al publicar | `../../CHANGELOG.md` | tag en release |
 | RNF-29 token issuer/audience | 🟢 | `jwt.decode` con `issuer`+`audience`+exp (PyJWKClient) | `security.py`, `test_security` | DEV |
 | RNF-30 entrega de eventos (produce) | 🟢 | Outbox + **relay** con `SKIP LOCKED` + publisher confirms + DLQ; **relay auto-recuperable** ante caída del broker (reconecta y drena el outbox; verificado en vivo reiniciando RabbitMQ) | `messaging/relay.py`, `messaging/runner.py`, `test_broker`, `test_runner` | DEV |
-| RNF-31 readiness (esta matriz) | 🟡 | Matriz + checklist mantenidas | este archivo | DEV |
+| RNF-31 readiness (esta matriz) | 🟢 | Matriz + checklist mantenidas y al día por fase | este archivo | DEV |
 
 ## Diferencias notables vs `asset-inventory-service`
 - **RNF-07 aplica** (control técnico de alcance de conexión SSH — no solo del scan-orchestrator).
