@@ -1,8 +1,9 @@
-# Entorno de DESARROLLO local para probar asset-inventory-service (p. ej. vía Postman).
+# Entorno de DESARROLLO local para probar los microservicios del backend (p. ej. vía Postman).
 # NO es producción (contraseñas triviales, Keycloak en start-dev). Ver deploy/README.md.
 #
 #   docker compose -f docker-compose.dev.yml up --build
 #
+# Servicios de negocio: asset-inventory (8081, Java) y config-backup (8082, Python).
 name: redsegura-dev
 
 services:
@@ -12,6 +13,9 @@ services:
       POSTGRES_DB: asset_inventory
       POSTGRES_USER: redsegura
       POSTGRES_PASSWORD: changeme
+    # Init: crea además la base de datos propia de config-backup (database-per-service).
+    volumes:
+      - ./deploy/postgres/10-create-config-backup-db.sql:/docker-entrypoint-initdb.d/10-create-config-backup-db.sql:ro
     ports: ["5432:5432"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U redsegura -d asset_inventory"]
@@ -55,6 +59,29 @@ services:
       KEYCLOAK_ISSUER: http://localhost:8080/realms/redsegura
       KEYCLOAK_AUDIENCE: redsegura-backend
     ports: ["8081:8081"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      keycloak: { condition: service_started }
+
+  config-backup:
+    build:
+      context: .
+      dockerfile: config-backup-service/Dockerfile
+    environment:
+      CBS_DB_URL: postgresql+psycopg://redsegura:changeme@postgres:5432/config_backup
+      CBS_RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      CBS_MESSAGING_ENABLED: "true"
+      # Aplica las migraciones Alembic al arrancar (conveniencia de dev; en prod es un paso aparte).
+      CBS_RUN_MIGRATIONS: "1"
+      CBS_KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/redsegura/protocol/openid-connect/certs
+      # issuer = el claim `iss` que ven los clientes (localhost), no el host interno de la red Docker.
+      CBS_KEYCLOAK_ISSUER: http://localhost:8080/realms/redsegura
+      CBS_KEYCLOAK_AUDIENCE: redsegura-backend
+      CBS_GIT_REPO_PATH: /var/lib/config-backup/repo
+      # RNF-07: alcance de conexión SSH restringido a la red simulada.
+      CBS_ALLOWED_SCAN_CIDRS: 10.0.0.0/8,192.168.0.0/16
+    ports: ["8082:8000"]
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
