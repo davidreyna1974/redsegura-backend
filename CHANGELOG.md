@@ -8,6 +8,37 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 
 ## [No publicado]
 
+### `config-backup-service` — Implementación completa (Python/FastAPI, **76 tests**, cobertura 95 %, CI verde)
+- **Respaldo y versionado (RF-06/07/10):** captura running/startup vía SSH tras interfaz
+  `DeviceConnector` (Netmiko real + doble de test); versionado en repo Git interno (GitPython) + diff;
+  `unsavedChanges` (running≠startup, ADR-02); metadatos en Postgres; produce `config.*` vía outbox.
+- **Alcance de conexión (RNF-07):** control técnico de CIDRs autorizados (`assert_in_scope`) — rechaza
+  fuera de alcance **antes** de conectar (dev/test = red simulada).
+- **Resiliencia (RNF-10):** reintentos con backoff en SSH (`with_retries`); **hilos de fondo
+  auto-recuperables** (`run_resilient`: consumidor/relay/scheduler/retención reconectan con backoff
+  ante caídas del broker/BD) — cierra `HALLAZGO-LIVE-CBS-01`.
+- **Drift (RF-09):** compara running en vivo vs último respaldo; emite `config.drift_detected`.
+- **Jobs por lotes (RF-08):** `POST /backups` y `/drift-checks` asíncronos → `jobId`; dispatcher
+  inyectable; tablas `jobs`/`job_results`; objetivo por `scope`/`deviceIds`/`filter` (exactamente uno).
+- **Programaciones cron (RF-08):** `POST/GET /schedules` (crear solo ADM); `croniter` + scheduler de
+  fondo con `SKIP LOCKED`; `next_run_at`; disparo como `scheduler:<id>`.
+- **Eventos (RNF-21/30):** consumidor idempotente de `asset.*` (dedupe por `eventId`) que mantiene la
+  vista local; **Pact consumidor** (INT-CONS); transactional outbox + relay `SKIP LOCKED` + publisher
+  confirms + DLQ sobre RabbitMQ real (Testcontainers).
+- **Seguridad (RNF-04/06/29):** JWT en profundidad (firma JWKS + `issuer` + `audience` + expiración);
+  RBAC por endpoint validado en el servicio; credenciales SSH externalizadas (nunca en código/BD/logs).
+- **Observabilidad 3 pilares (RNF-15/16/17):** `/metrics` Prometheus (HTTP + dominio: respaldos, drift,
+  eventos publicados, jobs); trazas OpenTelemetry (traceId en logs); logs JSON con **redacción de la
+  contraseña SSH**.
+- **Endurecimiento:** Dockerfile multi-stage **no-root** + HEALTHCHECK; **graceful shutdown** (uvicorn);
+  **retención** de datos operativos (`purge_old`, nunca respaldos/Git); **SCA** en CI (pip-audit +
+  Trivy imagen, bloqueante en crítico).
+- **Verificación en vivo:** 14/14 operaciones OpenAPI sobre `docker-compose.dev.yml` con JWT reales de
+  Keycloak (reporte `documentos/verificacion_endpoints.md` + colección Postman + guía). Detectó y
+  corrigió `HALLAZGO-LIVE-CBS-01` (relay sin reconexión), re-verificado reiniciando RabbitMQ.
+- **Entorno dev:** `docker-compose.dev.yml` extendido (2.ª BD `config_backup`, servicio Python en
+  `:8082`, mensajería activa).
+
 ### `asset-inventory-service` — Endurecimiento a producción (2.º ciclo: contenedor, apagado, datos, métricas)
 - **Contenedor no-root:** el `Dockerfile` crea y usa un usuario sin privilegios (`USER appuser`).
 - **Graceful shutdown:** `server.shutdown=graceful` + `timeout-per-shutdown-phase` → drena peticiones
