@@ -185,9 +185,10 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
 [ ] La autorización se valida en el backend, no se asume que el API Gateway ya filtró todo.
 ```
 
-**D — Definición de "done" (no ofrecer continuar hasta cumplir las 6):**
+**D — Definición de "done" (no ofrecer continuar hasta cumplir las 7):**
 ```
-[ ] 1. Todos los casos de prueba en ✅ PASS.
+[ ] 1. Todos los casos de prueba en ✅ PASS — **0 en ⏳** (gate ejecutable
+       `scripts/check_casos_completos.py`, exigido al liberar a main).
 [ ] 2. Gatekeeper en verde (build + tests + lint) y cobertura ≥ 70%.
 [ ] 3. Si el servicio expone o consume un contrato (API/evento), verificado con Pact.
 [ ] 4. Documentación del microservicio (propuesta + casos + memoria técnica) actualizada.
@@ -200,13 +201,19 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
        disparador registrado en preparacion_produccion.md). Un RNF sin gate NO se da por cumplido:
        donde exista (SCA/imagen, cobertura, contrato, Swagger) lo hace fallar el CI. "done funcional"
        ≠ "production-ready" — este último exige además los ítems de la etapa correspondiente.
+[ ] 7. **Conformidad de contrato verificada (L-QA-08):** para servicios con openapi.yaml, un test
+       ejecutable (`tests/test_contract_conformance.py`) confirma que la implementación honra CADA
+       operación/parámetro/cabecera declarados — no basta con que los tests de comportamiento pasen
+       (una funcionalidad declarada pero no implementada no tiene test que falle). Categoría `CONF`
+       en casos_de_prueba con un caso por cada parámetro/cabecera/respuesta del contrato.
 ```
 
 > **E — Tipos de test obligatorios por microservicio** (además de A–D): la batería de pruebas de
 > `asset-inventory-service` es el **patrón replicable** para todos: unit + integración
-> (Testcontainers) + conformidad de contrato (API + eventos) + aceptación BDD (Cucumber) +
-> **verificación en vivo de endpoints** + 4 fases de QA. Detalle y particularidades por servicio en
-> `../management/documentos/qa/estrategia_de_pruebas.md`.
+> (Testcontainers) + **conformidad de contrato↔implementación** (`test_contract_conformance.py`:
+> impl honra el openapi.yaml) + conformidad de contrato de eventos (Pact/JSON Schema) + aceptación
+> BDD (Cucumber/behave) + **verificación en vivo de endpoints** + 4 fases de QA. Detalle y
+> particularidades por servicio en `../management/documentos/qa/estrategia_de_pruebas.md`.
 
 ---
 
