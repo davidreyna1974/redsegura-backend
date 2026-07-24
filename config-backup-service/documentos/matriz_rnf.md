@@ -3,7 +3,7 @@
 Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia (al RNF lo que
 [`casos_de_prueba.md`](casos_de_prueba.md) es a lo funcional).
 
-**Última actualización:** 2026-07-24 · **Estado:** ✅ certificado (R-C1 + R-C2) · **Fuente de RNF:**
+**Última actualización:** 2026-07-24 · **Estado:** ✅ certificado (R-C1 + R-C2 + R-C3) · **Fuente de RNF:**
 [`proyecto_microservicios_redsegura.md §8`](../../../management/documentos/proyecto_microservicios_redsegura.md) ·
 **Endurecimiento por etapas:** [`preparacion_produccion.md`](../../../management/documentos/arquitectura/preparacion_produccion.md)
 
@@ -50,6 +50,6 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 - **RNF-21 (Pact) se activa ahora** (INT-CONS): es el primer consumidor de `asset.*`.
 - **RNF-02** (respaldo < 30 s) aplica a este servicio (verificación en PRE-REL con red simulada).
 
-> **Estado:** ✅ **servicio certificado (R-C1 + R-C2)** — todos los RNF de etapa DEV en ✅; los 🔵
+> **Estado:** ✅ **servicio certificado (R-C1 + R-C2 + R-C3)** — todos los RNF de etapa DEV en ✅; los 🔵
 > restantes son diferidos con disparador (INT-SYNC/DEPLOY/PRE-REL), obligatorios en su etapa y
 > rastreados en `preparacion_produccion.md`. Sin ningún 🟡 de etapa DEV.

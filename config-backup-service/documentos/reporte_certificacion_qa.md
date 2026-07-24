@@ -5,18 +5,52 @@
 > se re-ejecuta desde cero (Fase 3). No sustituye R1/R2; las **certifica**.
 >
 > **Rondas de certificación (histórico, más reciente primero):**
-> - **R-C2** (2ª vuelta, 2026-07-24, commit `ceb48a8`) — re-certificación tras incorporar los gates
->   de prevención (conformidad de contrato, anti-⏳) + aceptación BDD. **✅ CERTIFICADO, 0 hallazgos.**
+> - **R-C3** (3ª vuelta, 2026-07-24, commit `81bd1c6`) — re-certificación tras cerrar la conformidad
+>   de contrato de **eventos** (`HALLAZGO-EVT-CBS-01`). **✅ CERTIFICADO, 0 hallazgos.**
+> - **R-C2** (2ª vuelta, 2026-07-24, commit `ceb48a8`) — re-certificación tras los gates de prevención
+>   + aceptación BDD. **✅ CERTIFICADO, 0 hallazgos.**
 > - **R-C1** (1ª vuelta, 2026-07-24, commit `13e3106`) — 1ª certificación; detectó y corrigió
 >   `HALLAZGO-QA-CBS-01/02`. **✅ CERTIFICADO.**
->
-> **⚠️ Cambio funcional post-R-C2 → requiere re-certificación (R-C3 pendiente):** al **cerrar la
-> conformidad de contrato de eventos** (cara del contrato que ningún gate vigilaba) se destapó
-> `HALLAZGO-EVT-CBS-01` (ver abajo): los `config.*` se publicaban **sin el sobre común** y con
-> **payloads que no coincidían con el catálogo**. Se corrigió + verificó (gate 105 tests, conformidad
-> productor-side, y **envelope real observado en el broker en vivo**), pero al ser un **cambio de la
-> superficie emitida** invalida la base de código congelado de R-C2. **La certificación vigente exige
-> ejecutar R-C3** sobre el nuevo commit.
+
+---
+
+# Ronda R-C3 — 3ª vuelta (2026-07-24)
+
+> **Motivación:** al cerrar la 3.ª cara del contrato (eventos producidos) se corrigió
+> `HALLAZGO-EVT-CBS-01` (ver §"HALLAZGO-EVT-CBS-01" abajo) — un **cambio de la superficie emitida** que
+> invalidó la base congelada de R-C2. Se re-certifica desde cero, todos los elementos partiendo de "no
+> validado". No sobrescribe R-C1/R-C2.
+
+- **Inicio de ronda (Fase 1):** commit congelado `81bd1c6` · **Fecha:** 2026-07-24
+
+## R-C3 · Fase 1 — Inventario (código congelado)
+
+- **Gate limpio (cachés purgadas):** ruff ✅ · mypy ✅ (65 archivos) · **105 tests, 0 fallos** · cobertura **95 %**.
+- **Gate anti-⏳:** ✅ 0 pendientes.
+- **Conformidad de contrato — API:** 13/13 operaciones · 0 parámetros/cabeceras sin honrar.
+- **Conformidad de contrato — eventos:** esquema válido; los **4** `config.*` emitidos validan el
+  `config-event.schema.json` (`test_config_event_contract`, happy/sad).
+- **Inventario de casos:** **68 ✅ · 0 ⏳ · 0 ❌** (incluye EVT-CONF-01..05).
+- **Conclusión:** **0 hallazgos.**
+
+## R-C3 · Fase 2 — Corrección
+
+**Sin correcciones.** Código permanece congelado.
+
+## R-C3 · Fase 3 — Re-ejecución completa
+
+- **Gate limpio:** 105 tests · cobertura 95 % · ruff+mypy verdes.
+- **Verificación en vivo** (imagen reconstruida, JWT reales de Keycloak): batería estándar **20/20** +
+  **13/13** (idempotencia/filtros) + **envelope de eventos en vivo**: `config.backup_failed` observado
+  en el broker con sobre completo (`eventId/eventType/version=1.0.0/occurredAt/source` + payload §4.3).
+  **0 hallazgos · 0 regresiones.**
+
+## R-C3 · Fase 4 — Certificación
+
+- Gate final ✅ · anti-⏳ ✅ · conformidad API ✅ · conformidad eventos ✅.
+- Casos: **68 ✅ · 0 ⏳ · 0 ❌**. Matriz RNF sin 🟡 DEV (RNF-21 produce/consume ambos 🟢).
+- **Veredicto R-C3: ✅ CERTIFICADO** (0 hallazgos). Las **3 caras del contrato** (API, eventos
+  consumidos, eventos producidos) tienen gate ejecutable y están verificadas.
 
 ## HALLAZGO-EVT-CBS-01 — eventos `config.*` no conformes al catálogo (post-R-C2, corregido)
 

@@ -4,7 +4,7 @@
 > [`propuesta_modulo.md`](propuesta_modulo.md) · Casos: [`casos_de_prueba.md`](casos_de_prueba.md) ·
 > RNF: [`matriz_rnf.md`](matriz_rnf.md) · Contrato: [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** ✅ implementado y **certificado (R-C1 + R-C2)** · **Stack:** Python 3.12 / FastAPI · **Última actualización:** 2026-07-24
+**Estado:** ✅ implementado y **certificado (R-C1 + R-C2 + R-C3)** · **Stack:** Python 3.12 / FastAPI · **Última actualización:** 2026-07-24
 
 ---
 
@@ -69,6 +69,7 @@ _(bitácora por fase — se llena al avanzar.)_
 | Seguridad + observabilidad + endurecimiento | ✅ | **JWT (iss/aud) + RBAC por endpoint** (`security.py`); RFC 7807. **Observabilidad 3 pilares** (`observability.py`): métricas Prometheus `/metrics` (HTTP + dominio: respaldos/drift/eventos/jobs), trazas OTel (traceId en logs), **logs JSON con redacción de secretos SSH** (RNF-15/16/17). **Endurecimiento**: Dockerfile **non-root** + HEALTHCHECK, **graceful shutdown** uvicorn, **retención** de datos operativos (`services/retention.py`), **SCA pip-audit + Trivy imagen (bloqueante crítico)** en CI. 71 tests, cobertura 95%; imagen construida y verificada en vivo (liveness 200, `/metrics`, usuario `appuser`). |
 | Verificación EN VIVO de endpoints | ✅ | **14/14 operaciones OpenAPI** sobre docker-compose.dev.yml con **JWT reales de Keycloak** por rol (curl/Postman): salud, RBAC (401/403), validación (400/422), CRUD schedules, jobs por lotes async, drift, aislamiento de tipo (404), golden path event-driven `asset.created`→vista, RF-10 (SSH FAILED con gracia), RNF-09/13/15/17 verificados. Reporte `documentos/verificacion_endpoints.md` + colección Postman + guía. Esa pasada detectó **HALLAZGO-LIVE-CBS-01** (relay/consumidor morían ante caída de conexión al broker; sin reconexión → outbox no se drenaba). **Corregido** con `run_resilient` (reconexión + backoff exponencial en `runner.py`, 5 tests de regresión) y **re-verificado en vivo** (reinicio de RabbitMQ → el hilo sobrevive y publica; outbox drenado). 76 tests, cobertura 95%. |
 | Revalidación integral R2 (2ª iteración) | ✅ | Cachés purgadas → gate limpio (**76 tests, 94.97 %**, ruff+mypy verdes) + **20/20 en vivo** + regresión de resiliencia (reinicio de RabbitMQ, relay sobrevive). Sin hallazgos nuevos. Reporte `documentos/reporte_r2_revalidacion.md`. |
+| Certificación QA 4 fases (R-C3, 3ª vuelta) | ✅ | Re-certificación (2026-07-24, commit `81bd1c6`) tras cerrar la conformidad de contrato de **eventos** (`HALLAZGO-EVT-CBS-01`). Ronda íntegra desde "no validado": **0 hallazgos** (105 tests, 95 %; conformidad API 13/13 + eventos 4/4; en vivo 20/20 + 13/13 + **envelope de eventos verificado en el broker**). No sobrescribe R-C1/R-C2. |
 | Certificación QA 4 fases (R-C2, 2ª vuelta) | ✅ | Re-certificación (2026-07-24, commit `ceb48a8`) tras los 3 gates de prevención + aceptación BDD. Ronda íntegra sobre código congelado, todo partiendo de "no validado": **0 hallazgos** (99 tests, 95 %, conformidad 13/13, en vivo 20/20 + 13/13). No sobrescribe R-C1. Reporte `reporte_certificacion_qa.md`. |
 | Certificación QA 4 fases (R-C1, 1ª vuelta) | ✅ | Ronda formal (2026-07-24) sobre código congelado. **Fase 1** destapó 2 divergencias contrato↔implementación: `HALLAZGO-QA-CBS-01` (`GET /backups` ignoraba filtros del contrato: hostname/mgmtIp/status/from/to/sort) y `HALLAZGO-QA-CBS-02` (`Idempotency-Key` declarada, no honrada). **Fase 2** los corrigió: filtros completos (`test_backups_filters`) + módulo de **idempotencia de escritura** (`app/idempotency.py` + tabla `idempotency_keys`/migración 0004 + cabecera en los 3 POST; reserva por actor, replay, 409, liberación en fallo — `test_idempotency`) + tests de diff (`test_diff_api`). **Fase 3** re-ejecución limpia (93 tests, 95 %) + en vivo 20/20 + 13/13 de los fixes. **Fase 4** ✅ CERTIFICADO. Reporte `documentos/reporte_certificacion_qa.md`. Contrato: +respuesta 409 en los 3 POST. |
 
@@ -96,10 +97,10 @@ Rastreados en [`matriz_rnf.md`](matriz_rnf.md) y `preparacion_produccion.md` (DE
 
 ## 7. Cumplimiento ("done") — ✅ CERTIFICADO (R-C1 + R-C2)
 Definición de done D1..D7 del `CLAUDE.md`:
-- **D1 — casos en ✅ PASS (0 ⏳):** ✅ 63 ✅ / 0 ⏳ (gate anti-⏳ verde).
-- **D2 — gatekeeper + cobertura ≥ 70 %:** ✅ 99 tests, cobertura 95 %, ruff+mypy verdes, CI verde.
-- **D3 — contrato con Pact:** ✅ consume `asset.*` (INT-CONS); produce `config.*` (mini-Pact diferido INT-SYNC, ver §4).
+- **D1 — casos en ✅ PASS (0 ⏳):** ✅ 68 ✅ / 0 ⏳ (gate anti-⏳ verde).
+- **D2 — gatekeeper + cobertura ≥ 70 %:** ✅ 105 tests, cobertura 95 %, ruff+mypy verdes, CI verde.
+- **D3 — contrato con Pact:** ✅ consume `asset.*` (INT-CONS) + produce `config.*` (mini-Pact productor-side, `config-event.schema.json`, ver §4).
 - **D4 — documentación del módulo:** ✅ propuesta + casos + memoria + matriz + reportes al día.
-- **D5 — verificación EN VIVO:** ✅ R-C1 20/20 + R-C2 20/20 + 13/13 (idempotencia/filtros).
+- **D5 — verificación EN VIVO:** ✅ R-C1/R-C2/R-C3 20/20 + 13/13 + envelope de eventos en el broker.
 - **D6 — RNF sin 🟡 DEV:** ✅ (los 🔵 son diferidos con disparador registrado).
-- **D7 — conformidad de contrato:** ✅ `test_contract_conformance` (13/13 operaciones, 0 params sin honrar).
+- **D7 — conformidad de contrato:** ✅ API `test_contract_conformance` (13/13, 0 params sin honrar) + eventos `test_config_event_contract` (4/4 tipos).

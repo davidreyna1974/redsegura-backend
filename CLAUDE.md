@@ -335,7 +335,7 @@ sobre el entorno Docker Compose): 10/10 ✅ —
 `HALLAZGO-LIVE-01` (PUT no cumplía reemplazo completo RFC 9110 — campos omitidos no se nulificaban;
 +2 tests de regresión).
 
-**`config-backup-service` — implementado y ✅ QA certificado (4 fases R-C1 + re-certificación R-C2, 99 tests, cobertura 95 %, CI activo con SCA/Trivy):**
+**`config-backup-service` — implementado y ✅ QA certificado (4 fases, 3 vueltas R-C1/R-C2/R-C3, 105 tests, cobertura 95 %, CI activo con SCA/Trivy):**
 Python/FastAPI contract-first; respaldo/versionado de config vía SSH (Netmiko tras `DeviceConnector`
 mockeable, RNF-07 alcance de CIDRs + RNF-10 reintentos) + repo Git interno (GitPython) + diff;
 `unsavedChanges` (ADR-02); **drift-check (RF-09)**; **jobs por lotes async (RF-08)** (`jobId` +
@@ -345,12 +345,15 @@ outbox → relay** (`SKIP LOCKED` + publisher confirms + DLQ) sobre RabbitMQ; JW
 endpoint; **observabilidad 3 pilares** (métricas Prometheus `/metrics`, trazas OTel, logs JSON con
 redacción de secretos); endurecimiento (Dockerfile no-root, graceful shutdown, retención, SCA
 pip-audit + Trivy imagen en CI). **idempotencia de escritura** (`Idempotency-Key` en los 3 POST: reserva por actor + replay + 409, RN-CB7);
-**filtros completos de listado** (hostname/mgmtIp/status/rango de fechas/sort). **Verificación en vivo**
-con JWT reales de Keycloak (R1 14/14, R2 20/20, certificación 20/20 + 13/13) —
+**filtros completos de listado** (hostname/mgmtIp/status/rango de fechas/sort); **eventos `config.*`
+con sobre común + JSON Schema formal** (`config-event.schema.json`) + conformidad productor-side.
+**Verificación en vivo** con JWT reales de Keycloak (R1 14/14, R-C1/R-C2/R-C3 20/20 + 13/13 + envelope
+de eventos en el broker) —
 `config-backup-service/documentos/{verificacion_endpoints,reporte_r2_revalidacion,reporte_certificacion_qa}.md`.
 Hallazgos corregidos: `HALLAZGO-LIVE-CBS-01` (hilos de fondo morían ante caída del broker →
-`run_resilient`; **L-QA-07**), `HALLAZGO-QA-CBS-01/02` (divergencias contrato↔impl: filtros e
-idempotencia, cazadas por la certificación formal; **L-QA-08**).
+`run_resilient`; **L-QA-07**), `HALLAZGO-QA-CBS-01/02` (divergencias contrato↔impl API: filtros e
+idempotencia; **L-QA-08**), `HALLAZGO-EVT-CBS-01` (eventos `config.*` sin sobre y con payloads no
+conformes al catálogo — 3.ª cara del contrato, ahora con gate).
 
 **Próximos pasos (en orden):**
 1. Resto de servicios de Fase A: `compliance-audit-service`, `alerting-service`, `notification-service`.
