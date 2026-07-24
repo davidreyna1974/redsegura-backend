@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://redsegura/contracts/config-event.schema.json",
+  "title": "Evento config.* (productor: config-backup-service)",
+  "description": "Formaliza el sobre común (§3.3) y los payloads config.* (§4.2–4.5) del catálogo de eventos. version 1.0.0.",
+  "type": "object",
+  "required": ["eventId", "eventType", "version", "occurredAt", "source", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1 },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "config.backup_completed",
+        "config.backup_failed",
+        "config.drift_detected",
+        "config.unsaved_changes_detected"
+      ]
+    },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "occurredAt": { "type": "string", "minLength": 1 },
+    "traceId": { "type": ["string", "null"] },
+    "source": { "type": "string", "const": "config-backup-service" },
+    "payload": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "eventType": { "const": "config.backup_completed" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/backupCompleted" } } }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "config.backup_failed" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/backupFailed" } } }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "config.drift_detected" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/driftDetected" } } }
+    },
+    {
+      "if": { "properties": { "eventType": { "const": "config.unsaved_changes_detected" } } },
+      "then": { "properties": { "payload": { "$ref": "#/$defs/unsavedChanges" } } }
+    }
+  ],
+  "$defs": {
+    "backupCompleted": {
+      "type": "object",
+      "required": ["deviceId", "backupId", "commit", "capturedAt", "unsavedChanges", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1 },
+        "backupId": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string", "minLength": 1 },
+        "capturedAt": { "type": "string", "minLength": 1 },
+        "unsavedChanges": { "type": "boolean" },
+        "status": { "type": "string", "const": "SUCCESS" }
+      }
+    },
+    "backupFailed": {
+      "type": "object",
+      "required": ["deviceId", "attemptedAt", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1 },
+        "attemptedAt": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    "driftDetected": {
+      "type": "object",
+      "required": ["deviceId", "baselineBackupId", "driftRef", "detectedBy", "detectedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1 },
+        "baselineBackupId": { "type": "string", "minLength": 1 },
+        "driftRef": { "type": "string", "minLength": 1 },
+        "detectedBy": { "type": "string", "enum": ["backup", "drift-check"] },
+        "detectedAt": { "type": "string", "minLength": 1 }
+      }
+    },
+    "unsavedChanges": {
+      "type": "object",
+      "required": ["deviceId", "backupId", "runningVsStartupDiffRef", "detectedAt"],
+      "additionalProperties": false,
+      "properties": {
+        "deviceId": { "type": "string", "minLength": 1 },
+        "backupId": { "type": "string", "minLength": 1 },
+        "runningVsStartupDiffRef": { "type": "string", "minLength": 1 },
+        "detectedAt": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

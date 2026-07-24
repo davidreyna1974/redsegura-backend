@@ -9,6 +9,37 @@
 >   de prevención (conformidad de contrato, anti-⏳) + aceptación BDD. **✅ CERTIFICADO, 0 hallazgos.**
 > - **R-C1** (1ª vuelta, 2026-07-24, commit `13e3106`) — 1ª certificación; detectó y corrigió
 >   `HALLAZGO-QA-CBS-01/02`. **✅ CERTIFICADO.**
+>
+> **⚠️ Cambio funcional post-R-C2 → requiere re-certificación (R-C3 pendiente):** al **cerrar la
+> conformidad de contrato de eventos** (cara del contrato que ningún gate vigilaba) se destapó
+> `HALLAZGO-EVT-CBS-01` (ver abajo): los `config.*` se publicaban **sin el sobre común** y con
+> **payloads que no coincidían con el catálogo**. Se corrigió + verificó (gate 105 tests, conformidad
+> productor-side, y **envelope real observado en el broker en vivo**), pero al ser un **cambio de la
+> superficie emitida** invalida la base de código congelado de R-C2. **La certificación vigente exige
+> ejecutar R-C3** sobre el nuevo commit.
+
+## HALLAZGO-EVT-CBS-01 — eventos `config.*` no conformes al catálogo (post-R-C2, corregido)
+
+**Detección:** al cerrar la deuda "esquema de eventos producidos" (registrada en la auditoría
+documental), se comparó lo emitido contra el catálogo (§3.3 sobre, §4.2–4.5 payloads) y se halló:
+1. **Sin sobre común:** se publicaba el **payload desnudo** (`{"deviceId":…}`), sin
+   `eventId/eventType/version/occurredAt/source`. Un consumidor real (`alerting`) no podría procesarlo.
+2. **Payloads divergentes** en los 4 eventos: faltaban `capturedAt`/`status` (completed),
+   `attemptedAt` y nombre `reason`≠`failureReason` (failed), `baselineBackupId`/`detectedBy` y nombre
+   `detectedAt`≠`checkedAt` (drift), `runningVsStartupDiffRef`/`detectedAt` (unsaved).
+
+**Por qué ningún gate/ronda lo cazó:** era la **tercera cara del contrato** (eventos producidos), sin
+esquema formal contra el cual comparar; el gate de conformidad (Pieza 1) solo cubre la API, y los
+tests EVT-OUT solo verificaban el `event_type`, no la estructura del mensaje publicado. Es la misma
+raíz de siempre — *estándar sin artefacto/gate que lo obligue* — en el eje de eventos.
+
+**Corrección:** sobre común construido al publicar (`outbox.to_envelope`, relay); payloads alineados
+al catálogo; **JSON Schema** `contracts/events/config-event.schema.json`; **test de conformidad
+productor-side** `test_config_event_contract` (happy/sad, con dientes); `test_broker` valida el sobre
+sobre RabbitMQ real. **Verificación en vivo:** envelope real observado en el broker
+(`eventId/eventType/version=1.0.0/source=config-backup-service` + payload §4.3). **Blast radius:**
+local al productor de eventos (el contrato de evento se formaliza ahora; no hay consumidor aún).
+Gate: **105 tests, cobertura 95 %**, ruff+mypy verdes. → **Pendiente formalizar en R-C3.**
 
 ---
 

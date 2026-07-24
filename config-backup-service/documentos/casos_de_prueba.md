@@ -96,6 +96,11 @@ cobertura 95 %. **Estados:** `✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `N/A
 | EVT-OUT-02 | EVT | `config.backup_failed` tras fallo | evento con `failureReason` | ✅ |
 | EVT-OUT-03 | EVT | `config.drift_detected` tras drift | evento con `driftRef` (`test_drift`) | ✅ |
 | EVT-OUT-04 | EVT | Operación fallida **no** emite evento de éxito | solo `config.backup_failed` (RNF-E4) | ✅ |
+| EVT-CONF-01 | EVT/contract | `config.backup_completed` + `unsaved_changes_detected` cumplen el JSON Schema (sobre §3.3 + payload §4.2/4.5) | conformes (`test_config_event_contract`) | ✅ |
+| EVT-CONF-02 | EVT/contract | `config.backup_failed` cumple el esquema (payload §4.3: `reason`/`attemptedAt`) | conforme (`test_config_event_contract`) | ✅ |
+| EVT-CONF-03 | EVT/contract | `config.drift_detected` cumple el esquema (payload §4.4: `baselineBackupId`/`detectedBy`/`detectedAt`) | conforme (`test_config_event_contract`) | ✅ |
+| EVT-CONF-04 | EVT/contract | El **sobre común** se publica (no el payload desnudo) | envelope con `eventId/eventType/version/source` — broker real + en vivo (`test_broker`) | ✅ |
+| EVT-CONF-05 | EVT/contract | Esquema con **dientes**: rechaza payload sin sobre / sin campos del catálogo / `source` erróneo | rechazado (`test_config_event_contract`) | ✅ |
 
 ## Resiliencia SSH (RNF-10 — aplica desde DEV)
 | ID | Cat. | Descripción | Esperado | Estado |

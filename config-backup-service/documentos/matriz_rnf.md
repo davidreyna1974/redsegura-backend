@@ -32,7 +32,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-19 gatekeeper en CI | 🟢 | ruff + mypy(strict) + pytest + pip-audit + Trivy, **activo y verde** | `.github/workflows/ci-config-backup-service.yml` | DEV |
 | RNF-20 documentación pre-código | ✅ | propuesta/casos/memoria/matriz (este paquete) | `documentos/` | — |
 | **RNF-21 Pact (consume)** | 🟢 | **Consumidor de `asset.*` verificado (INT-CONS)** contra el esquema compartido + **consumo real** desde RabbitMQ | `test_asset_event_contract` (PACT-01), `test_broker` | **INT-CONS cerrado** |
-| **RNF-21 Pact (produce `config.*`)** | 🔵 | Emisión de `config.*` verificada funcionalmente (EVT-OUT-01..04); **diferido con disparador**: JSON Schema formal + test productor-side ("mini-Pact") | `test_backup_service`, `test_drift` | **INT-SYNC** — al existir el primer consumidor (`alerting`) o al formalizar el catálogo |
+| **RNF-21 Pact (produce `config.*`)** | 🟢 | **Sobre común (§3.3) + payloads conformes al catálogo (§4.2–4.5)**; **JSON Schema formal** (`contracts/events/config-event.schema.json`) + **test de conformidad productor-side ("mini-Pact")** con casos happy/sad; verificado en vivo (envelope real en el broker) | `test_config_event_contract` (EVT-CONF-01..06), `test_broker` | **cerrado** (HALLAZGO-EVT-CBS-01) |
 | RNF-22 paridad Compose ↔ k8s | 🔵 | 12-factor | — | **DEPLOY** |
 | RNF-23 IaC (Terraform) | 🔵 | — | — | **DEPLOY** |
 | RNF-24 presupuesto AWS | ⬜ | — | — | Nivel infra |

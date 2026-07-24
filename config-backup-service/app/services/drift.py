@@ -77,13 +77,16 @@ def drift_check_device(
     stored = git_store.read_config(str(device_id), baseline.commit, "running")
     drift = live.running.strip() != stored.strip()
     if drift:
+        # Payload conforme al catálogo §4.4 (config-event.schema.json).
         writer.record(
             session,
             "config.drift_detected",
             {
                 "deviceId": str(device_id),
-                "driftRef": baseline.commit,
-                "checkedAt": checked_at.isoformat(),
+                "baselineBackupId": str(baseline.backup_id),
+                "driftRef": f"diff:running@live-vs-{baseline.commit}",
+                "detectedBy": "drift-check",
+                "detectedAt": checked_at.isoformat(),
             },
         )
         session.commit()
