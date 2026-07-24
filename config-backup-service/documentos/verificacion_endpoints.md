@@ -1,5 +1,10 @@
 # Verificación en vivo de endpoints — config-backup-service
 
+> **Iteraciones:** **R1** (2026-07-22, primera pasada — detectó y corrigió `HALLAZGO-LIVE-CBS-01`,
+> documentada abajo). **R2** (2026-07-24, revalidación integral, 20/20 ✅ sin hallazgos nuevos +
+> regresión de resiliencia en vivo) → [`reporte_r2_revalidacion.md`](reporte_r2_revalidacion.md).
+> Este documento conserva el detalle de **R1**.
+
 > Verificación **en vivo** sobre `docker-compose.dev.yml` (Postgres + RabbitMQ + Keycloak + el
 > servicio en su imagen Docker real, usuario no-root), con **JWT reales de Keycloak** por rol
 > (`admin`/`operador`/`auditor`, cliente `redsegura-postman`). Complementa —no sustituye— los tests
