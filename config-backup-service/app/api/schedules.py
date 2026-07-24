@@ -4,14 +4,16 @@ lectura (ADM/OPE/AUD)."""
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.api.backups import begin_idempotent
 from app.db.models import Schedule
 from app.db.session import get_session
+from app.idempotency import Idempotency
 from app.schemas import (
     PageSchedule,
     ScheduleCreateRequest,
@@ -27,19 +29,27 @@ router = APIRouter(tags=["schedules"])
 AdminOnly = Annotated[Principal, Depends(require_roles("ADM"))]
 ReadRoles = Annotated[Principal, Depends(require_roles("ADM", "OPE", "AUD"))]
 Db = Annotated[Session, Depends(get_session)]
+IdemKey = Annotated[str | None, Header(alias="Idempotency-Key")]
 
 
 @router.post("/schedules", status_code=status.HTTP_201_CREATED, response_model=ScheduleOut)
 def create_schedule_endpoint(
-    body: ScheduleCreateRequest, principal: AdminOnly, session: Db
-) -> ScheduleOut:
+    body: ScheduleCreateRequest, principal: AdminOnly, session: Db, idem_key: IdemKey = None
+) -> Any:
+    idem = Idempotency(session, idem_key, principal.subject, body.model_dump_json(by_alias=True))
+    replay = begin_idempotent(idem)
+    if replay is not None:
+        return replay
     try:
         schedule = create_schedule(session, body, principal.subject, datetime.now(UTC))
     except CronInvalidError as error:
+        idem.release()
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, f"Expresión cron inválida: {body.cron}"
         ) from error
-    return to_schedule_out(schedule)
+    out = to_schedule_out(schedule)
+    idem.store(status.HTTP_201_CREATED, out)
+    return out
 
 
 @router.get("/schedules", response_model=PageSchedule)

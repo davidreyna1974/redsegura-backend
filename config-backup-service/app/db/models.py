@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, Uuid
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -99,6 +99,22 @@ class JobResult(Base):
     device_id: Mapped[UUID] = mapped_column(Uuid)
     outcome: Mapped[str] = mapped_column(String(20))
     detail: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+
+class IdempotencyKey(Base):
+    """Clave de idempotencia de escritura (RN-CB7). Acotada por ``actor``; guarda el hash del cuerpo
+    y la respuesta para reproducirla ante un reintento idéntico."""
+
+    __tablename__ = "idempotency_keys"
+    __table_args__ = (UniqueConstraint("idem_key", "actor", name="uq_idempotency_key_actor"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    idem_key: Mapped[str] = mapped_column(String(255))
+    actor: Mapped[str] = mapped_column(String(255))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    response_status: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    response_body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
 
 
 class Schedule(Base):
