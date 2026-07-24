@@ -4,10 +4,11 @@
 > haya casos aplicables sin `✅ PASS`. Contrato: [`../openapi.yaml`](../openapi.yaml). Reglas:
 > [`propuesta_modulo.md`](propuesta_modulo.md) §5 (RN-CB1..8).
 
-**Estado:** ✅ **CERTIFICADO** (Protocolo de 4 fases, 2026-07-24). R1 (desarrollo) + R2 revalidación
-integral + **ronda de certificación** que detectó y corrigió 2 hallazgos de Fase 1
-(`HALLAZGO-QA-CBS-01` filtros de `GET /backups`, `HALLAZGO-QA-CBS-02` idempotencia RN-CB7) →
-[`reporte_certificacion_qa.md`](reporte_certificacion_qa.md). **57 ✅ · 0 ⏳ · 0 ❌** · 93 tests ·
+**Estado:** ✅ **CERTIFICADO** (Protocolo de 4 fases). **R-C1** (1ª vuelta): detectó/corrigió 2
+hallazgos de Fase 1 (`HALLAZGO-QA-CBS-01` filtros de `GET /backups`, `HALLAZGO-QA-CBS-02` idempotencia
+RN-CB7). **R-C2** (2ª vuelta, 2026-07-24, commit `ceb48a8`): re-certificación tras los gates de
+prevención + aceptación BDD → **0 hallazgos**. Ver
+[`reporte_certificacion_qa.md`](reporte_certificacion_qa.md). **63 ✅ · 0 ⏳ · 0 ❌** · 99 tests ·
 cobertura 95 %. **Estados:** `✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `N/A`. **Roles:** ADM · OPE · AUD.
 
 > **Aplicabilidad (servicio de API Python, sin UI):** `UI`/`VIS` → **N/A** (frontend). Se refuerzan

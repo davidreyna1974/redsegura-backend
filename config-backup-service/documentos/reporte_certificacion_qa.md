@@ -3,6 +3,55 @@
 > Ronda formal bajo el [Protocolo de verificación en 4 fases](../../../management/documentos/qa/protocolo_verificacion_4_fases.md).
 > **Regla inamovible:** la ronda se ejecuta íntegra sobre código **congelado**; si se corrige un bug,
 > se re-ejecuta desde cero (Fase 3). No sustituye R1/R2; las **certifica**.
+>
+> **Rondas de certificación (histórico, más reciente primero):**
+> - **R-C2** (2ª vuelta, 2026-07-24, commit `ceb48a8`) — re-certificación tras incorporar los gates
+>   de prevención (conformidad de contrato, anti-⏳) + aceptación BDD. **✅ CERTIFICADO, 0 hallazgos.**
+> - **R-C1** (1ª vuelta, 2026-07-24, commit `13e3106`) — 1ª certificación; detectó y corrigió
+>   `HALLAZGO-QA-CBS-01/02`. **✅ CERTIFICADO.**
+
+---
+
+# Ronda R-C2 — 2ª vuelta (2026-07-24)
+
+> **Motivación:** tras R-C1 se añadieron cambios (aditivos, sin tocar la lógica de endpoints): los
+> **3 gates de prevención** (test de conformidad contrato↔impl, gate anti-⏳, reglas de templates/DoD)
+> y la **batería de aceptación BDD** (pytest-bdd). Por la regla inamovible, el código cambió → se
+> re-certifica desde cero, con **todos los elementos partiendo de "no validado"**. No sobrescribe R-C1
+> (documentada más abajo).
+
+- **Inicio de ronda (Fase 1):** commit congelado `ceb48a8` · **Fecha:** 2026-07-24
+
+## R-C2 · Fase 1 — Inventario (código congelado)
+
+- **Gate limpio (cachés purgadas):** ruff ✅ · mypy ✅ (64 archivos) · **99 tests, 0 fallos** · cobertura **95 %**.
+- **Gate anti-⏳:** ✅ 0 casos pendientes.
+- **Conformidad de contrato (ejecutable):** 13/13 operaciones implementadas · 0 parámetros/cabeceras sin honrar.
+- **Inventario de casos:** **63 ✅ · 0 ⏳ · 0 ❌ · 0 N/A** (incluye CONF-01/02 y ACPT-01/04 nuevos).
+- **Conclusión:** **0 hallazgos.** Los cambios aditivos (gates + BDD) no regresionaron la superficie
+  funcional; el contrato sigue honrado al 100 %.
+
+## R-C2 · Fase 2 — Corrección
+
+**Sin correcciones:** Fase 1 no arrojó hallazgos. Código permanece congelado.
+
+## R-C2 · Fase 3 — Re-ejecución completa
+
+- **Gate limpio:** ruff ✅ · mypy(strict) ✅ · **99 tests** · cobertura **95 %**.
+- **Verificación en vivo** (imagen reconstruida sobre `docker-compose.dev.yml`, JWT reales de Keycloak):
+  **batería estándar 20/20** + **13/13 de conformidad (idempotencia + filtros)**. Golden path
+  event-driven ✅, RF-10 (SSH FAILED con gracia) ✅. **0 hallazgos · 0 regresiones.**
+
+## R-C2 · Fase 4 — Certificación
+
+- Gate final ✅ (99 tests, cobertura 95 %, ruff+mypy verdes) · anti-⏳ ✅ · conformidad ✅.
+- Casos: **63 ✅ · 0 ⏳ · 0 ❌**. Matriz RNF sin 🟡 DEV. Contratos (Pact + `config.*`) verificados.
+- **Veredicto R-C2: ✅ CERTIFICADO** (0 hallazgos). Refuerza R-C1 con los gates de prevención activos
+  y la aceptación BDD. Commit `chore(qa)`.
+
+---
+
+# Ronda R-C1 — 1ª vuelta (2026-07-24)
 
 - **Servicio:** config-backup-service · **Rama:** `develop`
 - **Inicio de ronda (Fase 1):** commit congelado `13e3106`
