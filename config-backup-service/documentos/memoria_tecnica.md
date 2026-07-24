@@ -4,7 +4,7 @@
 > [`propuesta_modulo.md`](propuesta_modulo.md) · Casos: [`casos_de_prueba.md`](casos_de_prueba.md) ·
 > RNF: [`matriz_rnf.md`](matriz_rnf.md) · Contrato: [`../openapi.yaml`](../openapi.yaml).
 
-**Estado:** pre-código (planificación) · **Stack:** Python 3.12 / FastAPI · **Última actualización:** 2026-07-17
+**Estado:** ✅ implementado y **certificado (R-C1 + R-C2)** · **Stack:** Python 3.12 / FastAPI · **Última actualización:** 2026-07-24
 
 ---
 
@@ -30,23 +30,33 @@ de `asset.*` (habilita Pact). Detalle en `propuesta_modulo.md`.
 ## 3. Estructura del proyecto
 ```
 config-backup-service/
-├── pyproject.toml          # deps + config de ruff/mypy/pytest/coverage
-├── requirements.txt        # deps + herramientas del gate (lo instala el CI)
+├── pyproject.toml · requirements.txt   # deps + config de ruff/mypy/pytest/coverage
+├── Dockerfile · docker-entrypoint.sh   # imagen non-root + HEALTHCHECK + graceful shutdown
+├── openapi.yaml                        # contrato (fuente de verdad)
+├── alembic/                            # migraciones 0001..0004 (vista, backups/outbox, jobs/schedules, idempotency)
 ├── app/
-│   ├── main.py             # create_app() + instancia (uvicorn: app.main:app)
-│   ├── config.py           # Settings 12-factor (pydantic-settings, prefijo CBS_)
-│   ├── errors.py           # handlers RFC 7807 (application/problem+json)
-│   ├── schemas.py          # modelos Pydantic del contrato (health/enums; resto por unidad)
-│   └── api/health.py       # probes liveness/readiness (checks inyectables)
-└── tests/                  # pytest + TestClient (health, errores, config)
+│   ├── main.py · config.py · errors.py · schemas.py   # app, Settings CBS_, RFC 7807, DTOs
+│   ├── security.py · deps.py · idempotency.py · observability.py  # JWT+RBAC, DI, RN-CB7, 3 pilares
+│   ├── git_store.py                    # repo Git interno de configuraciones (RF-07)
+│   ├── api/        health · backups · drift · schedules
+│   ├── db/         base · models · session (SQLAlchemy 2.0 + Alembic)
+│   ├── connectors/ base · netmiko_connector · scope (RNF-07) · resilience (RNF-10)
+│   ├── messaging/  asset_events · consumer · outbox · relay · runner · topology
+│   └── services/   backup · drift · jobs · schedules · retention
+└── tests/                              # pytest + Testcontainers; incl. test_contract_conformance
+                                        # (L-QA-08) y test_acceptance (BDD, features/respaldo.feature)
 ```
-_(se ampliará: `db/` (SQLAlchemy+Alembic), `connectors/` (SSH), `messaging/` (outbox+consumer),
-`services/` al implementar el núcleo.)_
 
 ## 4. Contratos consumidos/producidos (verificados)
 - **Consume:** `asset.*` (cola `q.config-backup.asset-events`) — ver `propuesta_modulo.md §4.1`.
+  Conformidad verificada contra `contracts/events/asset-event.schema.json` (Pact/INT-CONS,
+  `test_asset_event_contract`).
 - **Produce:** `config.backup_completed/failed`, `config.drift_detected`, `config.unsaved_changes_detected`
-  (outbox) — ver `§4.2`. Esquemas compartidos en `contracts/events/` (a crear para `config.*`).
+  (outbox). Emisión funcional verificada (EVT-OUT-01..04, `test_backup_service`/`test_drift`).
+  **Deuda registrada (INT-SYNC):** falta el **JSON Schema formal de `config.*`** en
+  `contracts/events/` + **test de conformidad productor-side** ("mini-Pact", como el
+  `AssetEventContractIT` de asset-inventory). Se cierra al construir el primer consumidor
+  (`alerting-service`) o antes si se formaliza el catálogo de eventos. Ver matriz RNF-21.
 
 ## 5. Hitos de implementación
 _(bitácora por fase — se llena al avanzar.)_
@@ -83,5 +93,12 @@ Rastreados en [`matriz_rnf.md`](matriz_rnf.md) y `preparacion_produccion.md` (DE
 > disparador:** prueba de carga de RNF-02 (respaldo < 30 s) y perf (PRE-REL); **fuzzing de API con
 > Schemathesis** y **mutation testing** (PRE-REL, complementarios — la cobertura de rama ya es 95 %).
 
-## 7. Cumplimiento ("done")
-_(se marca al certificar; ver la Definición de done D1..D7 del `CLAUDE.md`.)_
+## 7. Cumplimiento ("done") — ✅ CERTIFICADO (R-C1 + R-C2)
+Definición de done D1..D7 del `CLAUDE.md`:
+- **D1 — casos en ✅ PASS (0 ⏳):** ✅ 63 ✅ / 0 ⏳ (gate anti-⏳ verde).
+- **D2 — gatekeeper + cobertura ≥ 70 %:** ✅ 99 tests, cobertura 95 %, ruff+mypy verdes, CI verde.
+- **D3 — contrato con Pact:** ✅ consume `asset.*` (INT-CONS); produce `config.*` (mini-Pact diferido INT-SYNC, ver §4).
+- **D4 — documentación del módulo:** ✅ propuesta + casos + memoria + matriz + reportes al día.
+- **D5 — verificación EN VIVO:** ✅ R-C1 20/20 + R-C2 20/20 + 13/13 (idempotencia/filtros).
+- **D6 — RNF sin 🟡 DEV:** ✅ (los 🔵 son diferidos con disparador registrado).
+- **D7 — conformidad de contrato:** ✅ `test_contract_conformance` (13/13 operaciones, 0 params sin honrar).

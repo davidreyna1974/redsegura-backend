@@ -335,7 +335,7 @@ sobre el entorno Docker Compose): 10/10 ✅ —
 `HALLAZGO-LIVE-01` (PUT no cumplía reemplazo completo RFC 9110 — campos omitidos no se nulificaban;
 +2 tests de regresión).
 
-**`config-backup-service` — implementado y ✅ QA certificado (4 fases, 93 tests, cobertura 95 %, CI activo con SCA/Trivy):**
+**`config-backup-service` — implementado y ✅ QA certificado (4 fases R-C1 + re-certificación R-C2, 99 tests, cobertura 95 %, CI activo con SCA/Trivy):**
 Python/FastAPI contract-first; respaldo/versionado de config vía SSH (Netmiko tras `DeviceConnector`
 mockeable, RNF-07 alcance de CIDRs + RNF-10 reintentos) + repo Git interno (GitPython) + diff;
 `unsavedChanges` (ADR-02); **drift-check (RF-09)**; **jobs por lotes async (RF-08)** (`jobId` +
