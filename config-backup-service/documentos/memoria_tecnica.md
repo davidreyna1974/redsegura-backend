@@ -70,5 +70,17 @@ Rastreados en [`matriz_rnf.md`](matriz_rnf.md) y `preparacion_produccion.md` (DE
 > **no** Packet Tracer, que es simulador de baja fidelidad para automatización), y (3) **smoke
 > pre-producción** contra dispositivos reales/representativos. No bloquean DEV.
 
+> **Seguridad de config-as-code (deuda DEPLOY, `preparacion_produccion.md §2.10`):** las running/startup
+> config contienen secretos. Por estándar de gestión de redes (RANCID/Oxidized) se guardan **completas**
+> (se necesitan para restore/audit; redactarlas rompería drift y restore); el control es **cifrado
+> at-rest + acceso restringido** del repo Git (DEPLOY) + no exponerlas fuera de rol (RBAC en `diff` ✅,
+> logs redactados ✅). No bloquea DEV.
+
+> **Tests adicionales según estándares (análisis 2026-07-24):** **implementados en DEV** — aceptación
+> **BDD** (`tests/test_acceptance.py` + `features/respaldo.feature`, pytest-bdd; patrón E) y
+> **conformidad de contrato↔impl** (`test_contract_conformance.py`, L-QA-08). **Diferidos con
+> disparador:** prueba de carga de RNF-02 (respaldo < 30 s) y perf (PRE-REL); **fuzzing de API con
+> Schemathesis** y **mutation testing** (PRE-REL, complementarios — la cobertura de rama ya es 95 %).
+
 ## 7. Cumplimiento ("done")
-_(se marca al certificar; ver la Definición de done D1..D6 del `CLAUDE.md`.)_
+_(se marca al certificar; ver la Definición de done D1..D7 del `CLAUDE.md`.)_

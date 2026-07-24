@@ -107,6 +107,14 @@ cobertura 95 %. **Estados:** `✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `N/A
 | RUN-04/05 | RN | Parada limpia + set de errores recuperables (broker/BD/OS) | (`test_runner`) | ✅ |
 | RNF30-LIVE | CYBER/RN | **Relay sobrevive a reinicio de RabbitMQ** y drena el outbox (HALLAZGO-LIVE-CBS-01) | verificado en vivo: outbox→0, `Exception in thread`=0 | ✅ |
 
+## Aceptación BDD (ACPT — Gherkin, base de la UAT, patrón E)
+| ID | Cat. | Descripción | Esperado | Estado |
+|---|---|---|---|---|
+| ACPT-01 | ACPT/FLOW | Respaldo exitoso dentro del alcance | 201 SUCCESS (`respaldo.feature`) | ✅ |
+| ACPT-02 | ACPT/SEC | Respaldo fuera del alcance autorizado (RNF-07) | rechazado (422) (`respaldo.feature`) | ✅ |
+| ACPT-03 | ACPT/RBAC | Auditor no puede respaldar | 403 (`respaldo.feature`) | ✅ |
+| ACPT-04 | ACPT/RN | Detección de drift tras cambio en vivo (RF-09) | drift reportado (`respaldo.feature`) | ✅ |
+
 ## Conformidad de contrato↔implementación (CONF, L-QA-08)
 | ID | Cat. | Descripción | Esperado | Estado |
 |---|---|---|---|---|
