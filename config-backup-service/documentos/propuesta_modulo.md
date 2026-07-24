@@ -116,7 +116,7 @@ Tracer, acotada por configuración de CIDRs permitidos).
 | running vs startup config (Cisco/IOS) | sí | `unsavedChanges`; ambos se capturan |
 | Config-as-code / GitOps (versionado en Git) | sí | Repo Git interno; diff por commits (RF-07) |
 | Detección de drift (config compliance) | sí | Comparación running-vivo vs último respaldo (RF-09) |
-| Programación tipo cron | sí | Expresiones cron; APScheduler |
+| Programación tipo cron | sí | Expresiones cron (`croniter`) + scheduler de fondo con `SKIP LOCKED` (implementado; se descartó APScheduler por simplicidad/tipado) |
 
 **c) Hallazgos transversales a promover:** ninguno nuevo previsto (reusa ADR-04/08/09/11/14/15).
 

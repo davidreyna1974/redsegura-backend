@@ -4,8 +4,10 @@
 > haya casos aplicables sin `✅ PASS`. Contrato: [`../openapi.yaml`](../openapi.yaml). Reglas:
 > [`propuesta_modulo.md`](propuesta_modulo.md) §5 (RN-CB1..8).
 
-**Estado:** pre-código (todos `⏳ PENDIENTE` hasta implementar). **Estados:** `✅ PASS` · `❌ FAIL` ·
-`⏳ PENDIENTE` · `N/A`. **Roles:** ADM · OPE · AUD.
+**Estado:** implementado. **Ronda R1** (desarrollo) ✅ + **R2 revalidación integral** (2026-07-24,
+2ª iteración: todos los elementos reiniciados a "no verificado" y revalidados desde cero —
+[`reporte_r2_revalidacion.md`](reporte_r2_revalidacion.md)) **✅ sin hallazgos nuevos**. **Estados:**
+`✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `N/A`. **Roles:** ADM · OPE · AUD.
 
 > **Aplicabilidad (servicio de API Python, sin UI):** `UI`/`VIS` → **N/A** (frontend). Se refuerzan
 > `SEC, RBAC, CRUD, VAL, FLOW, RN, ERR, CYBER` + **dominio** (SSH/Git/drift/scope) + **EVT** (eventos).
