@@ -1,0 +1,25 @@
+# Gate de release (DoD #1, lección L-QA-08). Al liberar a `main`, "done = production-ready" exige
+# que ningún microservicio tenga casos de prueba en ⏳ PENDIENTE. Durante el desarrollo en ramas y en
+# `develop` los ⏳ son legítimos (los casos se definen antes de codificar), por eso este gate solo se
+# exige en los PR hacia `main`.
+name: QA release gate (casos completos)
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  casos-completos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configurar Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verificar 0 casos en ⏳ PENDIENTE (todos los servicios)
+        run: python scripts/check_casos_completos.py --all

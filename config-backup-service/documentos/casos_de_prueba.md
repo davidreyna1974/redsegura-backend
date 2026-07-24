@@ -107,6 +107,12 @@ cobertura 95 %. **Estados:** `✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `N/A
 | RUN-04/05 | RN | Parada limpia + set de errores recuperables (broker/BD/OS) | (`test_runner`) | ✅ |
 | RNF30-LIVE | CYBER/RN | **Relay sobrevive a reinicio de RabbitMQ** y drena el outbox (HALLAZGO-LIVE-CBS-01) | verificado en vivo: outbox→0, `Exception in thread`=0 | ✅ |
 
+## Conformidad de contrato↔implementación (CONF, L-QA-08)
+| ID | Cat. | Descripción | Esperado | Estado |
+|---|---|---|---|---|
+| CONF-01 | CONF | Cada operación del `openapi.yaml` está implementada (path+método) | 0 operaciones declaradas sin implementar (`test_contract_conformance`) | ✅ |
+| CONF-02 | CONF | Cada parámetro de query/cabecera declarado se honra (filtros de listado, `Idempotency-Key`) | 0 parámetros declarados sin implementar; gate con dientes (`test_contract_conformance`) | ✅ |
+
 ## Observabilidad y endurecimiento (RNF-13/15/16/17)
 | ID | Cat. | Descripción | Esperado | Estado |
 |---|---|---|---|---|
