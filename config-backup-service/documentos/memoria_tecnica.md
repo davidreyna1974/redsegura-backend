@@ -52,11 +52,12 @@ config-backup-service/
   Conformidad verificada contra `contracts/events/asset-event.schema.json` (Pact/INT-CONS,
   `test_asset_event_contract`).
 - **Produce:** `config.backup_completed/failed`, `config.drift_detected`, `config.unsaved_changes_detected`
-  (outbox). Emisión funcional verificada (EVT-OUT-01..04, `test_backup_service`/`test_drift`).
-  **Deuda registrada (INT-SYNC):** falta el **JSON Schema formal de `config.*`** en
-  `contracts/events/` + **test de conformidad productor-side** ("mini-Pact", como el
-  `AssetEventContractIT` de asset-inventory). Se cierra al construir el primer consumidor
-  (`alerting-service`) o antes si se formaliza el catálogo de eventos. Ver matriz RNF-21.
+  con el **sobre común (§3.3)** —`eventId`/`eventType`/`version`/`occurredAt`/`source`/`payload`—
+  construido al publicar (`outbox.to_envelope`) y **payloads conformes al catálogo §4.2–4.5**.
+  **JSON Schema formal:** `contracts/events/config-event.schema.json`; **conformidad productor-side**
+  verificada (`test_config_event_contract`, happy/sad) + broker real (`test_broker`) + en vivo
+  (envelope real observado en el broker). Cierra **HALLAZGO-EVT-CBS-01** (antes se publicaba el
+  payload desnudo, sin sobre, con campos que no coincidían con el catálogo).
 
 ## 5. Hitos de implementación
 _(bitácora por fase — se llena al avanzar.)_

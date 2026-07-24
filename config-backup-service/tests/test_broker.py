@@ -60,7 +60,14 @@ def test_relay_publishes_config_events(db_session: Session, channel: Any) -> Non
     assert published == 1
     method, _props, body = _get_with_retry(channel, "test.config-events")
     assert method is not None
-    assert json.loads(body)["deviceId"] == "d1"
+    # Se publica el sobre común (§3.3), no el payload desnudo.
+    envelope = json.loads(body)
+    assert envelope["eventType"] == "config.backup_completed"
+    assert envelope["source"] == "config-backup-service"
+    assert envelope["version"] == "1.0.0"
+    assert envelope["eventId"]
+    assert envelope["occurredAt"]
+    assert envelope["payload"]["deviceId"] == "d1"
     event = db_session.scalars(select(OutboxEvent)).first()
     assert event is not None
     assert event.published_at is not None
