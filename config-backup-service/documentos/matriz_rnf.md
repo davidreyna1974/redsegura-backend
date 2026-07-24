@@ -3,7 +3,7 @@
 Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia (al RNF lo que
 [`casos_de_prueba.md`](casos_de_prueba.md) es a lo funcional).
 
-**Última actualización:** 2026-07-21 · **Estado:** implementación en curso · **Fuente de RNF:**
+**Última actualización:** 2026-07-24 · **Estado:** ✅ certificado (R-C1 + R-C2) · **Fuente de RNF:**
 [`proyecto_microservicios_redsegura.md §8`](../../../management/documentos/proyecto_microservicios_redsegura.md) ·
 **Endurecimiento por etapas:** [`preparacion_produccion.md`](../../../management/documentos/arquitectura/preparacion_produccion.md)
 
@@ -14,7 +14,7 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-01 GET p95 < 300 ms | 🔵 | — | — | **PRE-REL** (prueba de carga) |
 | **RNF-02 respaldo < 30 s** | 🔵 | Respaldo SSH acotado en tiempo | — | **PRE-REL** (con red simulada) — **aplica a este servicio** |
 | RNF-03 auth OAuth2/JWT | 🟢 | `get_principal`: valida JWT de Keycloak (firma JWKS + iss + aud + exp) | `security.py`, `test_security`, `test_backups_api` (401) | DEV |
-| RNF-04 RBAC e2e server-side | 🟢 | `require_roles` por endpoint (escritura ADM/OPE; lectura +AUD) | `test_backups_api` (SEC-01/02: 401/403) | falta cubrir todos los endpoints (drift/schedules) |
+| RNF-04 RBAC e2e server-side | 🟢 | `require_roles` en **todos** los endpoints (escritura ADM/OPE; schedules crear=ADM; lectura +AUD) | `test_backups_api`, `test_drift` (SEC-03), `test_schedules` (SEC-04), `test_jobs` (SEC-05) + en vivo 401/403 | — |
 | RNF-05 TLS + segmentación | 🔵 | — | — | **DEPLOY** |
 | RNF-06 secretos externalizados | 🟢 | **Credenciales SSH** por env (`CBS_SSH_*`), nunca en código/BD | `config.py` | gestor de secretos en **DEPLOY** |
 | **RNF-07 alcance de conexión** | 🟢 | **Control técnico de CIDRs autorizados**: `assert_in_scope` rechaza fuera de alcance **antes** de conectar | `connectors/scope.py`, `test_scope_resilience`, `test_backup_service`, `test_backups_api` (RNF07-01: POST fuera de alcance → 422) | — |
@@ -31,7 +31,8 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 | RNF-18 cobertura ≥ 70 % | 🟢 | `pytest --cov --cov-fail-under=70` en el gate (cobertura real ~95 %) | CI | DEV |
 | RNF-19 gatekeeper en CI | 🟢 | ruff + mypy(strict) + pytest + pip-audit + Trivy, **activo y verde** | `.github/workflows/ci-config-backup-service.yml` | DEV |
 | RNF-20 documentación pre-código | ✅ | propuesta/casos/memoria/matriz (este paquete) | `documentos/` | — |
-| **RNF-21 Pact** | 🟢 | **Consumidor de `asset.*` verificado (INT-CONS)** contra el esquema compartido + **consumo real** desde RabbitMQ | `test_asset_event_contract` (PACT-01), `test_broker` | **INT-CONS cerrado** |
+| **RNF-21 Pact (consume)** | 🟢 | **Consumidor de `asset.*` verificado (INT-CONS)** contra el esquema compartido + **consumo real** desde RabbitMQ | `test_asset_event_contract` (PACT-01), `test_broker` | **INT-CONS cerrado** |
+| **RNF-21 Pact (produce `config.*`)** | 🔵 | Emisión de `config.*` verificada funcionalmente (EVT-OUT-01..04); **diferido con disparador**: JSON Schema formal + test productor-side ("mini-Pact") | `test_backup_service`, `test_drift` | **INT-SYNC** — al existir el primer consumidor (`alerting`) o al formalizar el catálogo |
 | RNF-22 paridad Compose ↔ k8s | 🔵 | 12-factor | — | **DEPLOY** |
 | RNF-23 IaC (Terraform) | 🔵 | — | — | **DEPLOY** |
 | RNF-24 presupuesto AWS | ⬜ | — | — | Nivel infra |
@@ -49,5 +50,6 @@ Rastrea, RNF por RNF, cómo lo cumple este servicio y dónde está la evidencia 
 - **RNF-21 (Pact) se activa ahora** (INT-CONS): es el primer consumidor de `asset.*`.
 - **RNF-02** (respaldo < 30 s) aplica a este servicio (verificación en PRE-REL con red simulada).
 
-> **Estado:** planificación pre-código. Los 🟡 se cierran durante la implementación; los 🔵 son
-> obligatorios en su etapa (rastreados en `preparacion_produccion.md`).
+> **Estado:** ✅ **servicio certificado (R-C1 + R-C2)** — todos los RNF de etapa DEV en ✅; los 🔵
+> restantes son diferidos con disparador (INT-SYNC/DEPLOY/PRE-REL), obligatorios en su etapa y
+> rastreados en `preparacion_produccion.md`. Sin ningún 🟡 de etapa DEV.
