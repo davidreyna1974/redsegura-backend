@@ -4,10 +4,11 @@
 > haya casos aplicables sin `✅ PASS`. Contrato: [`../openapi.yaml`](../openapi.yaml). Reglas:
 > [`propuesta_modulo.md`](propuesta_modulo.md) §5 (RN-CB1..8).
 
-**Estado:** implementado. **Ronda R1** (desarrollo) ✅ + **R2 revalidación integral** (2026-07-24,
-2ª iteración: todos los elementos reiniciados a "no verificado" y revalidados desde cero —
-[`reporte_r2_revalidacion.md`](reporte_r2_revalidacion.md)) **✅ sin hallazgos nuevos**. **Estados:**
-`✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `N/A`. **Roles:** ADM · OPE · AUD.
+**Estado:** ✅ **CERTIFICADO** (Protocolo de 4 fases, 2026-07-24). R1 (desarrollo) + R2 revalidación
+integral + **ronda de certificación** que detectó y corrigió 2 hallazgos de Fase 1
+(`HALLAZGO-QA-CBS-01` filtros de `GET /backups`, `HALLAZGO-QA-CBS-02` idempotencia RN-CB7) →
+[`reporte_certificacion_qa.md`](reporte_certificacion_qa.md). **57 ✅ · 0 ⏳ · 0 ❌** · 93 tests ·
+cobertura 95 %. **Estados:** `✅ PASS` · `❌ FAIL` · `⏳ PENDIENTE` · `N/A`. **Roles:** ADM · OPE · AUD.
 
 > **Aplicabilidad (servicio de API Python, sin UI):** `UI`/`VIS` → **N/A** (frontend). Se refuerzan
 > `SEC, RBAC, CRUD, VAL, FLOW, RN, ERR, CYBER` + **dominio** (SSH/Git/drift/scope) + **EVT** (eventos).
@@ -17,9 +18,9 @@
 ## Health / probes
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
 |---|---|---|---|---|---|---|
-| HLTH-01 | GET /health/liveness | FLOW | Proceso vivo | público | 200 `{status:UP}` sin auth | ⏳ |
-| HLTH-02 | GET /health/readiness | FLOW | BD + broker + Git OK | público | 200 si dependencias sanas | ⏳ |
-| HLTH-03 | GET /health/readiness | ERR | Dependencia caída | público | 503 `{status:DOWN}` | ⏳ |
+| HLTH-01 | GET /health/liveness | FLOW | Proceso vivo | público | 200 `{status:UP}` sin auth | ✅ |
+| HLTH-02 | GET /health/readiness | FLOW | BD + broker + Git OK | público | 200 si dependencias sanas | ✅ |
+| HLTH-03 | GET /health/readiness | ERR | Dependencia caída | público | 503 `{status:DOWN}` | ✅ |
 
 ## Respaldo bajo demanda — `POST /devices/{id}/backups`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
@@ -31,7 +32,7 @@
 | RN-CB2 | (servicio) | RN | running ≠ startup → `unsavedChanges=true` + evento | — | `unsavedChanges:true`; emite `config.unsaved_changes_detected` (`test_backup_service`) | ✅ |
 | RN-CB3 | (servicio) | RN | Respaldo exitoso crea **1 commit** en Git interno | — | Metadato `commit`; versionado (`test_backup_service`/`test_git_store`) | ✅ |
 | RN-CB4 | (servicio) | RN | Fallo de conexión SSH (RF-10) | — | `status:FAILED` + `failureReason`; emite `config.backup_failed` | ✅ |
-| RN-CB7 | POST backups | RN | Idempotencia: misma clave + mismo cuerpo | ADM | 2.ª = 1.ª, sin duplicar | ⏳ |
+| RN-CB7 | POST backups/schedules | RN | Idempotencia: misma clave + mismo cuerpo | ADM | 2.ª = 1.ª, sin duplicar; distinto cuerpo → 409; clave acotada por actor; fallo libera la clave (`test_idempotency`) | ✅ |
 | CYBER-01 | logs | CYBER | Credenciales SSH **no** aparecen en logs | — | Contraseña SSH redactada a `***` por el formateador JSON (RNF-17) (`test_observability`) | ✅ |
 | **RNF07-01** | (servicio) | SEC/CYBER | Objetivo **fuera de los CIDRs autorizados** (RNF-07) | — | rechazado; **no** intenta conectar (`test_backup_service`) | ✅ |
 
@@ -48,17 +49,17 @@
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
 |---|---|---|---|---|---|---|
 | CRUD-02 | GET /backups | CRUD | Historial paginado | ADM/OPE/AUD | 200 página estándar (`test_backups_api`) | ✅ |
-| BSRCH-01 | GET /backups | BSRCH | Filtros hostname/mgmtIp/deviceId/unsavedChanges/status/fechas | ADM | Resultados correctos (AND) | ⏳ |
-| EMPTY-01 | GET /backups | EMPTY | Sin respaldos / sin coincidencias | ADM | 200 lista vacía | ⏳ |
+| BSRCH-01 | GET /backups | BSRCH | Filtros hostname/mgmtIp/deviceId/unsavedChanges/status/fechas | ADM | Resultados correctos (AND) | ✅ |
+| EMPTY-01 | GET /backups | EMPTY | Sin respaldos / sin coincidencias | ADM | 200 lista vacía | ✅ |
 | CRUD-03 | GET /backups/{id} | CRUD | Detalle existente | ADM/OPE/AUD | 200 `Backup` | ✅ |
 | ERR-02 | GET /backups/{id} | ERR | Id inexistente | ADM | **404** (`test_backups_api`) | ✅ |
 
 ## Diff — `GET /devices/{id}/backups/diff`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
 |---|---|---|---|---|---|---|
-| CRUD-04 | GET diff | CRUD | Diff entre 2 versiones (running) | ADM/OPE/AUD | 200 `DiffResult.diff` (unificado) | ⏳ |
-| VAL-02 | GET diff | VAL | `from`/`to` ausentes o inexistentes | ADM | **400/404** | ⏳ |
-| RN-CB3b | GET diff | RN | `configType=startup` | ADM | diff de startup-config | ⏳ |
+| CRUD-04 | GET diff | CRUD | Diff entre 2 versiones (running) | ADM/OPE/AUD | 200 `DiffResult.diff` (unificado) | ✅ |
+| VAL-02 | GET diff | VAL | `from`/`to` ausentes o inexistentes | ADM | **400/404** | ✅ |
+| RN-CB3b | GET diff | RN | `configType=startup` | ADM | diff de startup-config | ✅ |
 
 ## Drift-check — `POST /devices/{id}/drift-check`, `POST /drift-checks`
 | ID | Unidad | Cat. | Descripción | Rol | Esperado | Estado |
@@ -98,7 +99,7 @@
 ## Resiliencia SSH (RNF-10 — aplica desde DEV)
 | ID | Cat. | Descripción | Esperado | Estado |
 |---|---|---|---|---|
-| RES-01 | RN/ERR | Timeout de conexión SSH | falla acotada (timeout) + `FAILED`, no cuelga | ⏳ |
+| RES-01 | RN/ERR | Timeout de conexión SSH | falla acotada (timeout) + `FAILED`, no cuelga | ✅ |
 | RES-02 | RN | Reintento con backoff ante fallo transitorio | reintenta y luego SUCCESS (`test_scope_resilience`) | ✅ |
 | RUN-01 | RN | Hilo de fondo reconecta tras caída recuperable (backoff exponencial) | reejecuta; sleeps 1,2,… (`test_runner`) | ✅ |
 | RUN-02 | RN | Backoff tope en `max_backoff` | no crece indefinido (`test_runner`) | ✅ |

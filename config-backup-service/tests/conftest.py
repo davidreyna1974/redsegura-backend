@@ -16,6 +16,7 @@ from app.db.base import make_engine
 from app.db.models import (
     Backup,
     Device,
+    IdempotencyKey,
     Job,
     JobResult,
     OutboxEvent,
@@ -61,6 +62,7 @@ def db_session(pg_engine: Engine) -> Iterator[Session]:
         session.execute(delete(JobResult))
         session.execute(delete(Job))
         session.execute(delete(Schedule))
+        session.execute(delete(IdempotencyKey))
         session.execute(delete(OutboxEvent))
         session.execute(delete(Backup))
         session.execute(delete(ProcessedEvent))
@@ -77,6 +79,7 @@ def make_api_client(pg_engine: Engine, tmp_path: Path) -> Callable[..., TestClie
     def _make(
         roles: tuple[str, ...] | None = ("ADM",),
         connector: DeviceConnector | None = None,
+        subject: str = "tester",
     ) -> TestClient:
         app = create_app()
 
@@ -86,7 +89,7 @@ def make_api_client(pg_engine: Engine, tmp_path: Path) -> Callable[..., TestClie
 
         app.dependency_overrides[get_session] = _session
         if roles is not None:
-            principal = Principal(subject="tester", roles=frozenset(roles))
+            principal = Principal(subject=subject, roles=frozenset(roles))
             app.dependency_overrides[get_principal] = lambda: principal
         chosen: DeviceConnector = connector or FakeConnector()
         git_store = GitStore(str(tmp_path / "repo"))

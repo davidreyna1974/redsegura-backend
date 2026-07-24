@@ -56,6 +56,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
 
   /backups:
@@ -77,6 +78,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
     get:
       tags: [backups]
@@ -206,6 +208,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/UnprocessableEntity" }
     get:
       tags: [schedules]
@@ -248,6 +251,7 @@ components:
     Unauthorized: { description: No autenticado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
     Forbidden: { description: Sin permiso, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
     NotFound: { description: No encontrado, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
+    Conflict: { description: "Idempotency-Key reutilizada con distinto cuerpo, o petición con esa clave en curso", content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
     UnprocessableEntity: { description: Validación de negocio fallida, content: { application/problem+json: { schema: { $ref: "#/components/schemas/Problem" } } } }
 
   schemas:

@@ -8,6 +8,19 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 
 ## [No publicado]
 
+### `config-backup-service` — ✅ QA certificado (4 fases): correcciones de Fase 2
+- **`HALLAZGO-QA-CBS-01` (filtros de listado):** `GET /backups` ahora honra todos los parámetros del
+  contrato —`hostname`/`mgmtIp` (resueltos contra la vista de dispositivos), `status`, `from`/`to`
+  (rango sobre `capturedAt`) y `sort`—; antes ignoraba silenciosamente los no implementados.
+- **`HALLAZGO-QA-CBS-02` (idempotencia de escritura, RN-CB7):** cabecera `Idempotency-Key` honrada en
+  `POST /devices/{id}/backups`, `POST /backups` y `POST /schedules` (nuevo `app/idempotency.py` + tabla
+  `idempotency_keys`, migración 0004). Reserva la clave por actor antes del efecto; reintento con
+  misma clave+cuerpo → replay sin duplicar; distinto cuerpo → **409**; fallo de negocio libera la
+  clave. Contrato: +respuesta `409` en los 3 POST. **+17 tests** (76 → **93**, cobertura 95 %).
+- Ronda de certificación bajo el Protocolo de 4 fases (código congelado, inventario contra el
+  contrato, re-ejecución + verificación en vivo). Reporte `documentos/reporte_certificacion_qa.md`.
+  Lección de proceso **L-QA-08**.
+
 ### `config-backup-service` — Implementación completa (Python/FastAPI, **76 tests**, cobertura 95 %, CI verde)
 - **Respaldo y versionado (RF-06/07/10):** captura running/startup vía SSH tras interfaz
   `DeviceConnector` (Netmiko real + doble de test); versionado en repo Git interno (GitPython) + diff;

@@ -301,10 +301,9 @@ Cobertura mínima: **70% statements** por microservicio.
 
 ## 📦 Estado actual
 
-**Fase:** Fundación **completa**; Fase A **en curso**. `asset-inventory-service` (primer
-microservicio) implementado y **✅ QA R1 certificado**; `config-backup-service` (segundo
-microservicio) con **toda la superficie funcional del contrato implementada + R2 revalidación
-integral ✅** (pendiente certificación formal 4 fases); los 3 restantes de Fase A sin iniciar.
+**Fase:** Fundación **completa**; Fase A **en curso**. `asset-inventory-service` y
+`config-backup-service` implementados y **✅ QA certificados (4 fases)**; los 3 restantes de Fase A
+sin iniciar.
 
 **Fundación completada:** arquitectura global documentada (memoria técnica, diagrama,
 estándares, eventos, protocolo de QA — en `management`, **ADR-01..17**); POM padre del monorepo
@@ -329,7 +328,7 @@ sobre el entorno Docker Compose): 10/10 ✅ —
 `HALLAZGO-LIVE-01` (PUT no cumplía reemplazo completo RFC 9110 — campos omitidos no se nulificaban;
 +2 tests de regresión).
 
-**`config-backup-service` — implementado y ✅ R2 revalidado (76 tests, cobertura 94.97 %, CI activo con SCA/Trivy):**
+**`config-backup-service` — implementado y ✅ QA certificado (4 fases, 93 tests, cobertura 95 %, CI activo con SCA/Trivy):**
 Python/FastAPI contract-first; respaldo/versionado de config vía SSH (Netmiko tras `DeviceConnector`
 mockeable, RNF-07 alcance de CIDRs + RNF-10 reintentos) + repo Git interno (GitPython) + diff;
 `unsavedChanges` (ADR-02); **drift-check (RF-09)**; **jobs por lotes async (RF-08)** (`jobId` +
@@ -338,16 +337,18 @@ consumidor idempotente de `asset.*` (vista local) con **Pact consumidor (INT-CON
 outbox → relay** (`SKIP LOCKED` + publisher confirms + DLQ) sobre RabbitMQ; JWT iss/aud + RBAC por
 endpoint; **observabilidad 3 pilares** (métricas Prometheus `/metrics`, trazas OTel, logs JSON con
 redacción de secretos); endurecimiento (Dockerfile no-root, graceful shutdown, retención, SCA
-pip-audit + Trivy imagen en CI). **Verificación en vivo** con JWT reales de Keycloak (R1 14/14, R2
-20/20) — `config-backup-service/documentos/{verificacion_endpoints,reporte_r2_revalidacion}.md`. R1
-detectó y corrigió `HALLAZGO-LIVE-CBS-01` (hilos de fondo del broker morían ante caída de conexión →
-`run_resilient` con reconexión+backoff; +5 tests de regresión; origen de **L-QA-07**).
+pip-audit + Trivy imagen en CI). **idempotencia de escritura** (`Idempotency-Key` en los 3 POST: reserva por actor + replay + 409, RN-CB7);
+**filtros completos de listado** (hostname/mgmtIp/status/rango de fechas/sort). **Verificación en vivo**
+con JWT reales de Keycloak (R1 14/14, R2 20/20, certificación 20/20 + 13/13) —
+`config-backup-service/documentos/{verificacion_endpoints,reporte_r2_revalidacion,reporte_certificacion_qa}.md`.
+Hallazgos corregidos: `HALLAZGO-LIVE-CBS-01` (hilos de fondo morían ante caída del broker →
+`run_resilient`; **L-QA-07**), `HALLAZGO-QA-CBS-01/02` (divergencias contrato↔impl: filtros e
+idempotencia, cazadas por la certificación formal; **L-QA-08**).
 
 **Próximos pasos (en orden):**
-1. `config-backup-service`: **certificación formal QA de 4 fases** (código congelado + `chore(qa)`).
-2. Resto de servicios de Fase A: `compliance-audit-service`, `alerting-service`, `notification-service`.
-3. Golden path de extremo a extremo en Docker Compose.
-4. Pendiente de `asset-inventory-service`: Pact (al existir el primer consumidor — `config-backup` ya
+1. Resto de servicios de Fase A: `compliance-audit-service`, `alerting-service`, `notification-service`.
+2. Golden path de extremo a extremo en Docker Compose.
+3. Pendiente de `asset-inventory-service`: Pact (al existir el primer consumidor — `config-backup` ya
    consume `asset.*`); búsqueda insensible a acentos (BSRCH-02, `unaccent`) y demás deuda registrada.
 
 > **Deuda de producción registrada** (memoria técnica del módulo): validación `issuer`/`audience`
