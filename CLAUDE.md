@@ -185,7 +185,7 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
 [ ] La autorización se valida en el backend, no se asume que el API Gateway ya filtró todo.
 ```
 
-**D — Definición de "done" (no ofrecer continuar hasta cumplir las 7):**
+**D — Definición de "done" (no ofrecer continuar hasta cumplir las 8):**
 ```
 [ ] 1. Todos los casos de prueba en ✅ PASS — **0 en ⏳** (gate ejecutable
        `scripts/check_casos_completos.py`, exigido al liberar a main).
@@ -205,7 +205,17 @@ endpoint/comando no está terminado hasta que TODOS sus casos están en
        ejecutable (`tests/test_contract_conformance.py`) confirma que la implementación honra CADA
        operación/parámetro/cabecera declarados — no basta con que los tests de comportamiento pasen
        (una funcionalidad declarada pero no implementada no tiene test que falle). Categoría `CONF`
-       en casos_de_prueba con un caso por cada parámetro/cabecera/respuesta del contrato.
+       en casos_de_prueba con un caso por cada parámetro/cabecera/respuesta del contrato. Aplica a las
+       **3 caras del contrato**: API, eventos consumidos (Pact) y eventos producidos (JSON Schema +
+       conformidad productor-side).
+[ ] 8. **Integración cross-service (golden path) por cada vector (RNF-32, L-QA-09):** cada interacción
+       con OTRO microservicio (evento producido→consumido o llamada API) se valida **en vivo, e2e**,
+       sobre docker-compose.dev.yml con AMBOS servicios reales — no basta Pact (que valida el contrato
+       en aislamiento). Si interactúa con varios, se prueba **cada vector**. Se registra en
+       `documentos/integracion/matriz_interaccion.md` + su golden path
+       (`documentos/integracion/golden_path_*.md`, desde el template). Un vector cuya contraparte aún
+       no existe = DIFERIDO (con disparador). Lo **obliga** `scripts/check_golden_paths.py` en el gate
+       de release: ningún vector con ambas partes construidas puede quedar sin golden path ejecutado.
 ```
 
 > **E — Tipos de test obligatorios por microservicio** (además de A–D): la batería de pruebas de

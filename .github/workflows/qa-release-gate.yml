@@ -1,8 +1,10 @@
-# Gate de release (DoD #1, lección L-QA-08). Al liberar a `main`, "done = production-ready" exige
-# que ningún microservicio tenga casos de prueba en ⏳ PENDIENTE. Durante el desarrollo en ramas y en
-# `develop` los ⏳ son legítimos (los casos se definen antes de codificar), por eso este gate solo se
-# exige en los PR hacia `main`.
-name: QA release gate (casos completos)
+# Gate de release. Al liberar a `main`, "done = production-ready" exige:
+#  1) que ningún microservicio tenga casos de prueba en ⏳ PENDIENTE (DoD #1, L-QA-08);
+#  2) que todo vector de interacción entre servicios ya construidos tenga golden path ejecutado
+#     (RNF-32, L-QA-09).
+# Durante el desarrollo en ramas y en `develop` los ⏳ y los golden paths en curso son legítimos, por
+# eso este gate solo se exige en los PR hacia `main`.
+name: QA release gate (casos + integración cross-service)
 
 on:
   pull_request:
@@ -23,3 +25,6 @@ jobs:
           python-version: "3.12"
       - name: Verificar 0 casos en ⏳ PENDIENTE (todos los servicios)
         run: python scripts/check_casos_completos.py --all
+
+      - name: Verificar golden path por vector de interacción (RNF-32)
+        run: python scripts/check_golden_paths.py
