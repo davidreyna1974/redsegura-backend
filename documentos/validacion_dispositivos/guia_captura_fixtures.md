@@ -94,6 +94,9 @@ Ejemplos: `cisco_ios__lab-r1__running.txt`, `cisco_nxos__core-sw1__startup.txt`,
 
 ## 5. ¿Cuántas y de qué plataformas?
 
+> **¿Sin equipos a mano?** Usa **Cisco DevNet Sandbox** (dispositivos Cisco reales, **gratis**): ver
+> [`guia_captura_devnet.md`](guia_captura_devnet.md) — cubre IOS-XE y NX-OS sin hardware ni licencias.
+
 - **Mínimo útil:** 1 plataforma (aunque sea 1 equipo) → desbloquea el Nivel 1.
 - **Ideal (matriz multi-vendor):** una de cada `device_type` del plan §4 que tengas acceso
   (Cisco IOS/IOS-XE/NX-OS/ASA, Juniper, Arista, Nokia, VyOS).
