@@ -169,6 +169,7 @@ con disparador **INT-SYNC** hasta implementarse.
 backend/documentos/validacion_dispositivos/
 ├── plan_validacion_dispositivos.md      ← este documento (Fase 0)
 ├── guia_captura_fixtures.md             ← insumo del Nivel 1 (qué capturar y cómo enviarlo)
+├── guia_captura_devnet.md               ← acceso a Cisco DevNet Sandbox (fuente Cisco real gratuita)
 ├── matriz_compatibilidad.md             ← entregable de aprobación (se llena al ejecutar)
 ├── procedimiento_nivel1_fixtures.md     ← Nivel 1 (replay) + resultados
 ├── procedimiento_nivel2a_nos_libre.md   ← Nivel 2a (NOS libre) + resultados
