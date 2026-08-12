@@ -8,6 +8,17 @@ por servicio, p. ej. `asset-inventory-service-v0.1.0`).
 
 ## [No publicado]
 
+### Validación de fidelidad con dispositivos de red (SSH multi-vendor) — Fase 0
+- **Plan maestro** `documentos/validacion_dispositivos/plan_validacion_dispositivos.md`: escalera de
+  3 niveles (fixtures → NOS emulado → hardware), matriz multi-vendor, criterios de éxito y gates.
+- **Guía de captura de fixtures** (`guia_captura_fixtures.md`): qué capturar, redacción de secretos
+  (RNF-06/17) y convención de nombres.
+- **Guía de captura sobre Cisco DevNet** (`guia_captura_devnet.md`): fuente Cisco real y gratuita
+  (IOS-XE/NX-OS) — acceso (cuenta Cisco.com/CCO, no NetAcad), always-on vs reserved, credenciales
+  dinámicas, comandos de captura.
+- **Checkpoint de pausa prolongada:** CLAUDE.md apunta al handoff de sesión
+  (`management/documentos/sesiones/contexto_sesion_siguiente.md`) como punto de retomada.
+
 ### `config-backup-service` — ✅ QA certificado (4 fases): correcciones de Fase 2
 - **`HALLAZGO-QA-CBS-01` (filtros de listado):** `GET /backups` ahora honra todos los parámetros del
   contrato —`hostname`/`mgmtIp` (resueltos contra la vista de dispositivos), `status`, `from`/`to`
