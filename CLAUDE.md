@@ -365,10 +365,22 @@ Hallazgos corregidos: `HALLAZGO-LIVE-CBS-01` (hilos de fondo morían ante caída
 idempotencia; **L-QA-08**), `HALLAZGO-EVT-CBS-01` (eventos `config.*` sin sobre y con payloads no
 conformes al catálogo — 3.ª cara del contrato, ahora con gate).
 
+**⏸️ PAUSA PROLONGADA (desde 2026-08-11).** Al retomar, leer PRIMERO el checkpoint de sesión:
+`../management/documentos/sesiones/contexto_sesion_siguiente.md` (handoff ejecutivo — dónde vamos y
+punto exacto de retomar) + `estado_sesion_activa.md` (tablero detallado, misma carpeta).
+
+**Punto exacto de retomar:** ejecución del **plan de validación de dispositivos** (fidelidad SSH
+multi-vendor) — `documentos/validacion_dispositivos/` (plan Fase 0 ✅ + guías de captura general y
+Cisco DevNet ✅). **Nivel 1 (fixtures)** listo para ejecutar, a la espera de **capturas reales del
+usuario vía Cisco DevNet** (IOS-XE + NX-OS). Bifurcación: (A) Nivel 1 con esas capturas · (B) Nivel 2a
+(implica el soporte **multi-vendor** del conector: `device_type` por dispositivo vs. NAPALM) ·
+(C) arrancar `compliance-audit-service`.
+
 **Próximos pasos (en orden):**
-1. Resto de servicios de Fase A: `compliance-audit-service`, `alerting-service`, `notification-service`.
-2. Golden path de extremo a extremo en Docker Compose.
-3. Pendiente de `asset-inventory-service`: Pact (al existir el primer consumidor — `config-backup` ya
+1. Ejecutar la validación de dispositivos (Nivel 1 fixtures → Nivel 2a NOS libre → Nivel 2b IOSv/GNS3).
+2. Resto de servicios de Fase A: `compliance-audit-service`, `alerting-service`, `notification-service`.
+3. Golden path de extremo a extremo en Docker Compose.
+4. Pendiente de `asset-inventory-service`: Pact (al existir el primer consumidor — `config-backup` ya
    consume `asset.*`); búsqueda insensible a acentos (BSRCH-02, `unaccent`) y demás deuda registrada.
 
 > **Deuda de producción registrada** (memoria técnica del módulo): validación `issuer`/`audience`
